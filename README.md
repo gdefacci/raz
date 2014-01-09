@@ -2,7 +2,7 @@ Raz
 ---
 
 Raz is a type safe scala DSL to create and match urls.
-The following program iluustrates few features:
+The following program illustrates few features:
 
     val state = Raz / "countries" / pathVar[String] / "states" / pathVar[String] 
 
@@ -18,7 +18,8 @@ The following program iluustrates few features:
     /**
      * Absolute url
      */
-    
+
+    assert("http://mypage.com/countries/it/states/mi" == state.toF.apply("it", "mi").at("http://mypage.com").render)
     assert("http://mypage.com/countries/{country}/states/{state}" == state.toUriTemplate.toF.apply("country", "state").at("http://mypage.com").render)
     
     /**
