@@ -1,8 +1,31 @@
-Raz
----
+package org.obl.sample
 
-Raz is a type safe scala DSL to create and match urls.
-The following program iluustrates few features:
+import unfiltered.filter.Plan
+import unfiltered.request.GET
+
+object Sample {
+
+  import org.obl.raz._
+  import org.obl.raz.PathFs._
+
+  def main_1(args: Array[String]): Unit = {
+    val city = Raz / "countries" / pathVar[String]
+    
+    val sfx = Raz / "cities" && paramValueVar[Int]("p1")
+    
+    val sum = city append sfx
+    
+    println(sum.toF.apply("a", 12).render)
+
+    val sfx1:RootUri = Raz / "cities" && ("p2", "3")
+    
+    val sum1 = city append sfx1
+    
+    println(sum1.toF.apply("a").render)
+    
+  }
+  
+  def main(args: Array[String]): Unit = {
 
     val state = Raz / "countries" / pathVar[String] / "states" / pathVar[String] 
 
@@ -27,6 +50,7 @@ The following program iluustrates few features:
     
     var fullAdrs = state.append( street )
 
+    println(fullAdrs.toF.apply("it", "mi", 123, "Baker street", "12a").render)
     assert("/countries/it/states/mi/cities/123?street=Baker street&number=12a" == fullAdrs.toF.apply("it", "mi", 123, "Baker street", "12a").render)
 
     assert("/countries/{country}/states/{state}/cities/{city-id}?street={street}&number={street-number}" == fullAdrs.toUriTemplate.toF.apply("country", "state", "city-id", "street", "street-number").render)
@@ -69,8 +93,7 @@ The following program iluustrates few features:
       case GET(Address(country, state, cityId, street, streetNumber)) => unfiltered.response.Ok
     }
     
-Similar tools
--------------
+    
+  }
 
-[Linx](https://github.com/teigen/linx) is a scala library with similar objectives. Compared to Linx, Raz enforse a little more type safety
- 	    
+}
