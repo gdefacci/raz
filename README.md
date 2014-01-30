@@ -6,31 +6,31 @@ The following program illustrates few features:
 
     val state = Raz / "countries" / pathVar[String] / "states" / pathVar[String] 
 
-    assert("/countries/it/states/mi" == state.toF.apply("it", "mi").render)
+    assert("/countries/it/states/mi" == state("it", "mi").render)
 
-    assert("/countries/{country}/states/{state}" == state.toUriTemplate.toF.apply("country", "state").render)
+    assert("/countries/{country}/states/{state}" == state.toUriTemplate("country", "state").render)
     
     val street = Raz / "cities" / pathVar[Int] && paramValueVar[String]("street") && paramValueVar[String]("number")
     
-    assert("/cities/123?street=Baker street&number=12a" == street.toF.apply(123, "Baker street", "12a").render)
-    assert("/cities/{city-id}?street={street}&number={number}" == street.toUriTemplate.toF.apply("city-id", "street", "number").render)
+    assert("/cities/123?street=Baker street&number=12a" == street(123, "Baker street", "12a").render)
+    assert("/cities/{city-id}?street={street}&number={number}" == street.toUriTemplate("city-id", "street", "number").render)
 
     /**
      * Absolute url
      */
 
-    assert("http://mypage.com/countries/it/states/mi" == state.toF.apply("it", "mi").at("http://mypage.com").render)
-    assert("http://mypage.com/countries/{country}/states/{state}" == state.toUriTemplate.toF.apply("country", "state").at("http://mypage.com").render)
+    assert("http://mypage.com/countries/it/states/mi" == state("it", "mi").at("http://mypage.com").render)
+    assert("http://mypage.com/countries/{country}/states/{state}" == state.toUriTemplate("country", "state").at("http://mypage.com").render)
     
     /**
      * Concatenation
      */
     
-    var fullAdrs = state.append( street )
+    var fullAdrs = state.concat( street )
 
-    assert("/countries/it/states/mi/cities/123?street=Baker street&number=12a" == fullAdrs.toF.apply("it", "mi", 123, "Baker street", "12a").render)
+    assert("/countries/it/states/mi/cities/123?street=Baker street&number=12a" == fullAdrs("it", "mi", 123, "Baker street", "12a").render)
 
-    assert("/countries/{country}/states/{state}/cities/{city-id}?street={street}&number={street-number}" == fullAdrs.toUriTemplate.toF.apply("country", "state", "city-id", "street", "street-number").render)
+    assert("/countries/{country}/states/{state}/cities/{city-id}?street={street}&number={street-number}" == fullAdrs.toUriTemplate("country", "state", "city-id", "street", "street-number").render)
 
     /**
      * Mapping
@@ -38,9 +38,9 @@ The following program illustrates few features:
     
     case class CityStreetNumber(cityId:Int, street:String, number:String)
     
-    val mstreet = street.mapper.mapTo(Converter(CityStreetNumber.tupled, CityStreetNumber.unapply))
+    val mstreet = street.mapTo(Converter(CityStreetNumber.tupled, CityStreetNumber.unapply))
     
-    assert("/cities/123?street=Baker street&number=12a" == mstreet.toF.apply(CityStreetNumber(123, "Baker street", "12a")).render)
+    assert("/cities/123?street=Baker street&number=12a" == mstreet(CityStreetNumber(123, "Baker street", "12a")).render)
     
     /**
      * toUriTemplate is not avaiable on mstreet
@@ -52,10 +52,19 @@ The following program illustrates few features:
      * Match path
      */
 
-    val pth1:Path = mstreet.toF.apply(CityStreetNumber(223, "Baker street", "112a")) 
+    val pth1:Path = mstreet(CityStreetNumber(223, "Baker street", "112a"))   && ("extra-param", "other value") 
     
-    mstreet.matcher.apply(pth1) match {
-      case Some(PathMatchResult(CityStreetNumber(223, "Baker street", "112a"), _)) => ()
+    mstreet.matchPath(pth1) match {
+      case Some(PathMatchResult(CityStreetNumber(223, "Baker street", "112a"), rest)) => {
+        assert(rest.path.isEmpty)
+        assert(rest.params.length == 1)
+        rest.params.head match {
+          case QParamSg(name, v) => {
+            assert(name == "extra-param")
+            assert(v == Some("other value"))
+          }
+        } 
+      }
       case x => assert(false, "this should not happen")
     }
     
@@ -68,7 +77,7 @@ The following program illustrates few features:
     
     val myIntent:Plan.Intent = {
       case GET(Address(country, state, cityId, street, streetNumber)) => unfiltered.response.Ok
-    }
+        }
     
 Similar tools
 -------------
