@@ -1,6 +1,6 @@
 package org.obl.raz
 
-object UriTemplateFactory extends UTFactory {
+object UriTemplateFactory {
 
   private def expansion(prefix: String, suffix: String): StringConverter[String] = {
     StringConverter(sg => Some(prefix + sg + suffix), { uts =>
@@ -21,16 +21,16 @@ object UriTemplateFactory extends UTFactory {
     import PathHelper._
     
     pathf.expansionKind match {
-      case x if (x == ExpansionKind.stringExpansion) => (name:String) => sum( Path(PathSg(stringExpansion(name).toSeq)), pathf.suffix) 
-      case x if (x == ExpansionKind.reservedExpansion) => (name:String) => sum( Path(PathSg(reservedExpansion(name).toSeq)), pathf.suffix) 
-      case ExpansionKind.ParamValueStringExpansion(nm) => (name:String) => sum( Path(QParamSg(nm, stringExpansion(name))) ,pathf.suffix)
-      case ExpansionKind.ParamValueReservedExpansion(nm) => (name:String) => sum( Path(QParamSg(nm, reservedExpansion(name))) ,pathf.suffix)
+      case x if (x == ExpansionKind.stringExpansion) => (name:String) => PathHelper.merge( Path(None,PathSg(stringExpansion(name).toSeq), Nil, None ), pathf.suffix) 
+      case x if (x == ExpansionKind.reservedExpansion) => (name:String) => PathHelper.merge( Path(None,PathSg(reservedExpansion(name).toSeq), Nil, None), pathf.suffix) 
+      case ExpansionKind.ParamValueStringExpansion(nm) => (name:String) => PathHelper.merge( Path(None, PathSg.empty, QParamSg(nm, stringExpansion(name)) :: Nil, None) ,pathf.suffix)
+      case ExpansionKind.ParamValueReservedExpansion(nm) => (name:String) => PathHelper.merge( Path(None, PathSg.empty, QParamSg(nm, reservedExpansion(name)) :: Nil, None) ,pathf.suffix)
       case ExpansionKind.formStyleQueryExpansion => {
         val sgrenderer: (Boolean, (String,Option[String])) => String = {(isFirst, nameValue) =>
           if (isFirst) formStyleExpansion(nameValue._1).get
           else formStyleContinuation(nameValue._1).get
         }
-        (name:String) => sum( Path( QParamSg(name, None, sgrenderer) ) ,pathf.suffix)
+        (name:String) => PathHelper.merge( Path(None, PathSg.empty, QParamSg(name, None, sgrenderer) :: Nil, None) ,pathf.suffix)
       }
     }
   }

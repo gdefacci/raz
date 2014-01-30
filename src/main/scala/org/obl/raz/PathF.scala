@@ -7,24 +7,36 @@ case class PathMatchResult[+T, +R](value:T, rest:R) {
 trait PathF[+T] {
   
   private[raz] def apply[T1 >: T](t:T1):Path
-  def matchPath(p:Path):Option[PathMatchResult[T, Path]]
-  def suffix:Path
+  private[raz] def matchPath(p:Path):Option[PathMatchResult[T, Path]]
+  private[raz] def suffix:Path
+//  private[raz] def fragment:Option[String]
   
-  def expansionKind:ExpansionKind.Value
+  private[raz] def expansionKind:ExpansionKind.Value
   
-  def addPath(sg:PathSg):PathF[T]
-  def addParam(sg:QParamSg):PathF[T]
+  private[raz] def addPath(sg:PathSg):PathF[T]
+  private[raz] def addParam(sg:QParamSg):PathF[T]
+  private[raz] def withFragment(nm:String):PathF[T]
   
-  def addPaths(sgs:Seq[PathSg]) = {
+  private[raz] def addPaths(sgs:Seq[PathSg]) = {
     var r = this
     sgs.foreach( sg => r = r.addPath(sg))
     r
   }
   
-  def addParams(sgs:Seq[QParamSg]) = {
+  private[raz] def addParams(sgs:Seq[QParamSg]) = {
     var r = this
     sgs.foreach( sg => r = r.addParam(sg))
     r
+  }
+  
+  private[raz] def merge(p:Path):PathF[T] = {
+    var pv = this
+    pv = pv.addPath(p.path)
+    pv = pv.addParams(p.params)
+    p.fragment.foreach  { frg =>
+      pv = pv.withFragment(frg)  
+    }
+    pv
   }
   
   override def toString = {
@@ -52,7 +64,7 @@ class ParamSgF[T](f:T => Seq[QParamSg], matcher:Seq[QParamSg] => Option[PathMatc
 
 object PathF {
 
-  def mapTo[P,T](pathf:PathF[T], cnv:Converter[T,P]):PathF[P] = {
+  def mapTo[T,P](pathf:PathF[T], cnv:Converter[T,P]):PathF[P] = {
     val mtchr = (pathf.matchPath _).andThen { opt =>
       opt.map { r =>
         r.mapValue(cnv.apply)
@@ -61,36 +73,42 @@ object PathF {
     new PathFImpl[P](p => cnv.unapply(p).map(pathf.apply).getOrElse(Path.empty), mtchr, pathf.suffix, pathf.expansionKind)
   }
   
-  def apply[T](f:T => Path, matcher:Path => Option[PathMatchResult[T, Path]], expansionKind:ExpansionKind.Value) = new PathFImpl[T](f, matcher , Path.empty, expansionKind)
+  def apply[T](f:T => Path, matcher:Path => Option[PathMatchResult[T, Path]], suffix:Path, expansionKind:ExpansionKind.Value) = {
+    new PathFImpl[T](f, matcher , suffix, expansionKind)
+  }
   
   def pathMatcher[T](matcher:PathSg => Option[PathMatchResult[T, PathSg]]) = 
     (t:Path) => {
-      matcher(t.path).map( r => PathMatchResult[T, Path](r.value, Path(r.rest, t.params)))
+      matcher(t.path).map( r => PathMatchResult[T, Path](r.value, Path(None, r.rest, t.params, None)))
     }
   
   def path[T](f:T => PathSg, matcher:PathSg => Option[PathMatchResult[T, PathSg]], expansionKind:ExpansionKind.Value) = {
-    apply[T](t => Path(f(t)), pathMatcher(matcher), expansionKind )
+    apply[T](t => Path(None, f(t), Nil, None), pathMatcher(matcher), Path.empty, expansionKind)
   }
     
   def paramMatcher[T](matcher:Seq[QParamSg] => Option[PathMatchResult[T, Seq[QParamSg]]]) = {
-      (t:Path) => matcher(t.params).map( r => PathMatchResult[T, Path](r.value, Path(t.path, r.rest))) 
+      (t:Path) => matcher(t.params).map( r => PathMatchResult[T, Path](r.value, Path(None, t.path, r.rest, None))) 
     }
   
   def param[T](f:T => Seq[QParamSg], matcher:Seq[QParamSg] => Option[PathMatchResult[T, Seq[QParamSg]]], expansionKind:ExpansionKind.Value) = {
-    apply[T](t => Path(PathSg.empty, f(t)), t => matcher(t.params).map( r => PathMatchResult[T, Path](r.value, Path(t.path, r.rest))), expansionKind )
+    apply[T](t => Path(None, PathSg.empty, f(t), None), t => matcher(t.params).map( r => PathMatchResult[T, Path](r.value, Path(None, t.path, r.rest, None))), Path.empty, expansionKind)
   }
   
 }
 
 class PathFImpl[+T](f:T=>Path, matcher:Path => Option[PathMatchResult[T, Path]], val suffix:Path, val expansionKind:ExpansionKind.Value) extends PathF[T]{
-  private[raz] def apply[T1 >: T](t:T1):Path = PathHelper.sum(f(t.asInstanceOf[T]), suffix)
+  private[raz] def apply[T1 >: T](t:T1):Path = {
+    PathHelper.merge(f(t.asInstanceOf[T]), suffix)
+  }
   
   def matchPath(p:Path):Option[PathMatchResult[T, Path]] = matcher(p).flatMap { r =>
     PathHelper.subtract(r.rest, suffix).map(rpth => PathMatchResult(r.value, rpth))
   }
   
-  def addPath(sg:PathSg):PathF[T] = new PathFImpl[T](f,matcher, Path(suffix.path.add(sg), suffix.params), expansionKind )
-  def addParam(sg:QParamSg) = new PathFImpl[T](f,matcher, Path(suffix.path, suffix.params ++ Seq(sg)), expansionKind)
+  def addPath(sg:PathSg):PathF[T] = new PathFImpl[T](f,matcher, Path(suffix.base, suffix.path.add(sg), suffix.params, suffix.fragment), expansionKind)
+  def addParam(sg:QParamSg) = new PathFImpl[T](f,matcher, Path(suffix.base, suffix.path, suffix.params ++ Seq(sg), suffix.fragment), expansionKind)
+  
+  def withFragment(frg:String) = new PathFImpl[T](f,matcher, Path(suffix.base, suffix.path, suffix.params, Some(frg)), expansionKind)
 }
 
 object PathFs {

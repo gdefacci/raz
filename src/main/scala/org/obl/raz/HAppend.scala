@@ -1,103 +1,65 @@
 package org.obl.raz
 
-import PathHelper._
-
-trait HAppender[H <: Resource, H1 <: Resource, Out <: Resource] {
+trait HAppend[-H <: HPath, -H1 <: HPath, +Out <: HPath] {
   def concat(h: H, h1: H1): Out
 }
 
-object HAppender {
+object HAppend {
+  
+  def apply[H1 <: HPath, H2 <: HPath, Out <: HPath](f:(H1, H2) => Out) = new HAppend[H1, H2, Out] {
+    def concat(h1: H1, h2: H2): Out = f(h1,h2)
+  }
+  
+  /** HPathNil ++ HPathNil */
+  
+  implicit def hPathNil_HPathNil1[R <: RelativePathAspect, A <: CanAddAspect, P1 <: CanHavePathAsPrefix] =
+    HAppend[HPathNil[R, CanAddPath, CanHavePathAsPrefix], HPathNil[IsRelativePath, A, P1], HPathNil[R, A, CanHavePathAsPrefix]] { (h, h1) => 
+      HPathNil[R, A, CanHavePathAsPrefix](h.path ++ h1.path)
+  }
+  
+  implicit def hPathNil_HPathNil2[R <: RelativePathAspect, P <: CanHavePrefixAspect, P1 <: CanHaveParamsAsPrefix] =
+    HAppend[HPathNil[R, CanAddParam, P], HPathNil[IsRelativePath, CanAddParam, P1], HPathNil[R, CanAddParam, P]] { (h,h1) => 
+      HPathNil[R, CanAddParam, P](h.path ++ h1.path)
+    }
 
-  implicit object HAppender1 extends HAppender[RootPath, RootPath, RootPath] {
-    def concat(h: RootPath, h1: RootPath) = RootPath(h.path.add(h1.path))
-  }
+    /** HPathCons ++ HPathNil */
   
-  implicit object HAppender1a extends HAppender[RootPath, RootParams, RootUri] {
-    def concat(h: RootPath, h1: RootParams) = RootUri(h.value, h1.params)
-  }
+  implicit def hPathCons_HPathNil1[R <: RelativePathAspect, H1 <: HPath, A <: CanAddAspect, P1 <: CanHavePathAsPrefix, T] =
+    HAppend[HPathCons[H1, R, CanAddPath, CanHavePathAsPrefix, T], HPathNil[IsRelativePath, A, P1],  HPathCons[H1, R, A, CanHavePathAsPrefix, T]] { (h,h1) =>
+      HPathConsFactory[R, A, CanHavePathAsPrefix].create(h.head, h.value.merge(h1.path))
+    }
   
-  implicit object HAppender1b extends HAppender[RootParams, RootParams, RootParams] {
-    def concat(h: RootParams, h1: RootParams) = RootParams(h.params ++ h1.params)
-  }
+  implicit def hPathCons_HPathNil2[R <: RelativePathAspect, H1 <: HPath, A <: CanAddAspect, P <: CanHavePrefixAspect, T] =
+    HAppend[HPathCons[H1, R, CanAddParam, P, T], HPathNil[IsRelativePath, A, CanHaveParamsAsPrefix],  HPathCons[H1, R, A, P, T]] { (h,h1) =>
+        HPathConsFactory[R, A, P].create(h.head, h.value.merge(h1.path))
+    }
 
-  implicit object HAppender2 extends HAppender[RootPath, RootUri, RootUri] {
-    def concat(h: RootPath, h1: RootUri) = RootUri(h.path.add(h1.path), h1.params)
-  }
-  
-  implicit object HAppender2a extends HAppender[RootUri, RootParams, RootUri] {
-    def concat(h: RootUri, h1: RootParams) = RootUri(h.value, h.params ++ h1.params)
-  }
-  
-  
-  class HAppender5a0[T1, H1 <: PathResource] extends HAppender[PathHResource[H1, T1], RootPath, PathHResource[H1, T1]] {
-    def concat(ph:PathHResource[H1, T1], h1:RootPath) = {
-      val h = ph.addPath(h1.path)
-      new PathHResource(h.head, h.value)
-    }
-  }
-  
-  class HAppender5a1[T1, H1 <: PathResource] extends HAppender[PathHResource[H1, T1], RootUri, PathAndParamsHResource[H1, T1]] {
-    def concat(ph:PathHResource[H1, T1], h1:RootUri) = {
-      val h = ph.addPath(h1.path)
-      new PathAndParamsHResource(h.head, h.value.addParams(h1.params)  )
-    }
-  }
-  
-  class HAppender5a[T1, H1 <: PathResource] extends HAppender[PathHResource[H1, T1], RootParams, PathAndParamsHResource[H1, T1]] {
-    def concat(h:PathHResource[H1, T1], h1:RootParams) = {
-      new PathAndParamsHResource(h.head, h.value.addParams(h1.params))
-    }
-  }
+  /** HPathNil ++ HPathCons*/
 
-  implicit def toHAppender5a0[T1, H1 <: PathResource] = new HAppender5a0[T1, H1]
-  implicit def toHAppender5a1[T1, H1 <: PathResource] = new HAppender5a1[T1, H1]
-  
-  implicit def toHAppender5a[T1, H1 <: PathResource] = new HAppender5a[T1,H1]
-  
-  class HAppender5b[T1, H1 <: PathResource] extends HAppender[PathAndParamsHResource[H1, T1], RootParams, PathAndParamsHResource[H1, T1]] {
-    def concat(h:PathAndParamsHResource[H1, T1], h1:RootParams) = {
-      new PathAndParamsHResource(h.head, h.value.addParams(h1.params))
+  implicit def hPathNil_HPathCons1[R <: RelativePathAspect, A <: CanAddAspect, P1 <: CanHavePathAsPrefix, H2 <: HPath, T, Out <: HPath](implicit preph: HAppend[HPathNil[R, CanAddPath, CanHavePathAsPrefix], H2, Out]) = {
+    HAppend[HPathNil[R, CanAddPath, CanHavePathAsPrefix], HPathCons[H2, IsRelativePath, A, P1, T], HPathCons[Out, R, A, CanHavePathAsPrefix, T]] { (h1, h2) =>
+      HPathConsFactory[R, A, CanHavePathAsPrefix].create(preph.concat(h1, h2.head), h2.value)
     }
   }
   
-  implicit def toHAppender5b[T1, H1 <: PathResource] = new HAppender5b[T1,H1]
-  
-  class HAppender5c[T1, H1 <: Resource] extends HAppender[ParamsHResource[H1, T1], RootParams, ParamsHResource[H1, T1]] {
-    def concat(h:ParamsHResource[H1, T1], h1:RootParams) = {
-      new ParamsHResource(h.head, h.value.addParams(h1.params))
+  implicit def hPathNil_HPathCons2[R <: RelativePathAspect, A <: CanAddParam, P <: CanHavePrefixAspect, H2 <: HPath, T, Out <: HPath](implicit preph: HAppend[HPathNil[R, CanAddParam, P], H2, Out]) = {
+    HAppend[HPathNil[R, CanAddParam, P], HPathCons[H2, IsRelativePath, A, CanHaveParamsAsPrefix, T], HPathCons[Out, R, A, P, T]] { (h1, h2) =>
+      HPathConsFactory[R, A, P].create(preph.concat(h1, h2.head), h2.value)
     }
-  }
-  
-  implicit def toHAppender5c[T1, H1 <: Resource] = new HAppender5c[T1,H1]
-  
-  implicit def toHAppender4[T2, H1 <: PathResource, H2 <: PathResource, Out <: PathResource](implicit appender:HAppender[H1,H2,Out]) = new HAppender4[T2,H1,H2,Out](appender)
-//  implicit def toHAppender4_0[T2, H1 <: PathResource, H2 <: Resource, Out <: Resource](implicit appender:HAppender[H1,H2,Out]) = new HAppender4_0[T2,H1,H2,Out](appender)
-//  implicit def toHAppender4_1[T2, H1 <: PathResource, H2 <: PathResource, Out <: Resource](appender:HAppender[H1,H2,Out]) = new HAppender4_1[T2,H1,H2,Out](appender)
-  implicit def toHAppender4a[T2, H1 <: Resource, H2 <: PathResource, Out <: PathResource](implicit appender:HAppender[H1,H2,Out]) = new HAppender4a[T2,H1,H2,Out](appender)
-  implicit def toHAppender4b[T2, H1 <: Resource, H2 <: Resource, Out <: Resource](implicit appender:HAppender[H1,H2,Out]) = new HAppender4b[T2,H1,H2,Out](appender)
-  
-  class HAppender4[T2, H1 <: PathResource, H2 <: PathResource, Out <: PathResource](appender:HAppender[H1,H2,Out]) extends HAppender[H1, PathHResource[H2, T2], PathHResource[Out, T2]] {
-    def concat(h1:H1, h2:PathHResource[H2, T2]) = new PathHResource[Out, T2](appender.concat(h1, h2.head), h2.value)
-  }
-  
-  class HAppender4_0[T2, H1 <: PathResource, H2 <: Resource, Out <: Resource](appender:HAppender[H1,H2,Out]) extends HAppender[H1, ParamsHResource[H2, T2], ParamsHResource[Out, T2]] {
-    // class HAppender4_0 needs to be abstract, since method concat in trait HAppender of type 
-    //        (h: H1, h1: org.obl.raz.PathHResource[H2,T2])org.obl.raz.PathAndParamsHResource[Out,T2] is not defined
-    def concat(h1:H1, h2:ParamsHResource[H2, T2]) = new ParamsHResource[Out, T2](appender.concat(h1, h2.head), h2.value)
   }
 
-//  class HAppender4_1[T2, H1 <: PathResource, H2 <: Resource, Out <: Resource](appender:HAppender[H1,H2,Out]) extends HAppender[H1, PathHResource[H2, T2], ParamsHResource[Out, T2]] {
-//    def concat(h1:H1, h2:ParamsHResource[H2, T2]) = new PathHResource[Out, T2](appender.concat(h1, h2.head), h2.value)
-//  }
-  
-  class HAppender4a[T2, H1 <: Resource, H2 <: PathResource, Out <: PathResource](appender:HAppender[H1,H2,Out]) extends HAppender[H1, PathAndParamsHResource[H2, T2], PathAndParamsHResource[Out, T2]] {
-    def concat(h1:H1, h2:PathAndParamsHResource[H2, T2]) = new PathAndParamsHResource[Out, T2](appender.concat(h1, h2.head), h2.value)
+  /** HPathCons ++ HPathCons */
+
+  implicit def hPathCons_HPathCons1[R <: RelativePathAspect, A2 <: CanAddAspect, P1 <: CanHavePathAsPrefix, H1 <: HPath, H2 <: HPath, T1, T2, Out <: HPath](implicit preph: HAppend[HPathCons[H1,R, CanAddPath, CanHavePathAsPrefix,T1], H2, Out]) = {
+    HAppend[HPathCons[H1,R, CanAddPath, CanHavePathAsPrefix,T1], HPathCons[H2, IsRelativePath, A2, P1, T2], HPathCons[Out, R, A2, CanHavePathAsPrefix, T2]] { (h1, h2) =>
+      HPathConsFactory[R, A2, CanHavePathAsPrefix].create(preph.concat(h1, h2.head), h2.value)
+    }
   }
   
-  class HAppender4b[T2, H1 <: Resource, H2 <: Resource, Out <: Resource](appender:HAppender[H1,H2,Out]) extends HAppender[H1, ParamsHResource[H2, T2], ParamsHResource[Out, T2]] {
-    def concat(h1:H1, h2:ParamsHResource[H2, T2]) = new ParamsHResource[Out, T2](appender.concat(h1, h2.head), h2.value)
+  implicit def hPathCons_HPathCons2[R <: RelativePathAspect, A2 <: CanAddParam, P1 <: CanHavePathAsPrefix,  H1 <: HPath, H2 <: HPath, T1, T2, Out <: HPath](implicit preph: HAppend[HPathCons[H1,R, CanAddParam, P1,T1], H2, Out]) = {
+    HAppend[HPathCons[H1,R, CanAddParam, P1,T1], HPathCons[H2, IsRelativePath, A2, CanHaveParamsAsPrefix, T2], HPathCons[Out, R, A2, P1, T2]] { (h1, h2) =>
+      HPathConsFactory[R, A2, P1].create(preph.concat(h1, h2.head), h2.value)
+    }
   }
   
 }
-
-

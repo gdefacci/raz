@@ -1,4 +1,4 @@
-package org.obl.raz.gen
+package org.obl.raz.gen.exp
 
 object PathMatcherGen {
 
@@ -9,8 +9,8 @@ object PathMatcherGen {
 
     
     s""" 
-implicit def matcher$n[$tpars]: PathMatcher[HResource$n[$tpars], $typ] = {
-  apply[HResource$n[$tpars], $typ](Base.matcher$n)
+implicit def matcher$n[$tpars]: PathMatcher[HPath$n[_,_,_,$tpars], $typ] = {
+  apply[HPath$n[_,_,_,$tpars], $typ](Matchers.matcher$n)
 }"""
   }
   

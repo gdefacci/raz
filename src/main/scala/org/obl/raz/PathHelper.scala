@@ -2,14 +2,14 @@ package org.obl.raz
 
 object PathHelper {
 
-  def sum(paths:Path*):Path = {
+  def merge(paths:Path*):Path = {
     var p = PathSg.empty
     val q = collection.mutable.Buffer.empty[QParamSg]
     paths.foreach { pth =>
       p = p.add(pth.path)
       q ++= pth.params
     }
-    Path(p,q)
+    Path(paths.headOption.flatMap(_.base),p,q, paths.lastOption.flatMap(_.fragment))
   }
   
   /**
@@ -18,11 +18,11 @@ object PathHelper {
    */
   def subtract(from:Path, what:Path):Option[Path] = {
     what match {
-      case Path(wpath, pars) if (pars.isEmpty) => {
-    	  if (from.path.path.startsWith(wpath.path)) Some(Path(PathSg( from.path.path.drop(wpath.path.length)), from.params))
+      case Path(_, wpath, pars, _) if (pars.isEmpty) => {
+    	  if (from.path.path.startsWith(wpath.path)) Some(Path(None, PathSg( from.path.path.drop(wpath.path.length)), from.params, None))
     	  else None
       }
-      case Path(wpath, wpars) => {
+      case Path(_,wpath, wpars,_) => {
         if (from.path.path == wpath.path) {
           val remainingPars = collection.mutable.Buffer.empty[QParamSg]
           var it = from.params.iterator
@@ -34,7 +34,7 @@ object PathHelper {
               remainingPars += nxt
             } 
           }
-          Some(Path(PathSg.empty, remainingPars))
+          Some(Path(None, PathSg.empty, remainingPars, None))
         } else None
       }
     }
