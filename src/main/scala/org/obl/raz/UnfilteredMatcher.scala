@@ -41,11 +41,14 @@ trait UnfilteredMatcher { self: Path =>
 
 }
 
-trait UnfilteredHPathMatcher[+H <: HPath, +R <: RelativePathAspect, +A <: CanAddAspect, +P <: CanHavePrefixAspect, +T] { self: HPathCons[H, R, A, P, T] =>
+trait UnfilteredHPathMatcher[+H <: HPath, +R <: RelativePathAspect, +A <: CanAddAspect, +P <: CanHavePrefixAspect, T] { 
+  //self: HPathCons[H, R, A, P, T] =>
 
+  protected def pathToMatch:HPathCons[H, R, A, P, T]
+  
   def unapply[T1, TR](req: HttpRequest[T1])(implicit pm: PathMatcher[HPathCons[H, R, A, P, T], TR]): Option[TR] = {
     FromUnfiltered.toPath(req).flatMap { pth =>
-      pm.matcher(this)(pth) match {
+      pm.matcher(pathToMatch)(pth) match {
         case Some(PathMatchResult(v, rest)) if rest.isEmpty => Some(v)
         case _ => None
       }
@@ -55,7 +58,7 @@ trait UnfilteredHPathMatcher[+H <: HPath, +R <: RelativePathAspect, +A <: CanAdd
   object Partial {
     def unapply[T1, TR](req: HttpRequest[T1])(implicit pm: PathMatcher[HPathCons[H, R, A, P, T], TR]): Option[TR] = {
       FromUnfiltered.toPath(req).flatMap { pth =>
-        pm.matcher(self)(pth) match {
+        pm.matcher(pathToMatch)(pth) match {
           case Some(PathMatchResult(v, rest)) => Some(v)
           case _ => None
         }

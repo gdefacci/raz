@@ -26,7 +26,10 @@ object HPathConsFactory {
   def apply[R <: RelativePathAspect,A <: CanAddAspect,P <: CanHavePrefixAspect]() = new HPathConsFactory[R,A,P]
 }
 
-class HPathCons[+H <: HPath,+R <: RelativePathAspect,+A <: CanAddAspect,+P <: CanHavePrefixAspect, +T](val head:H, val value:PathF[T]) extends HPath with UnfilteredHPathMatcher[H,R,A,P,T] {
+class HPathCons[+H <: HPath,+R <: RelativePathAspect,+A <: CanAddAspect,+P <: CanHavePrefixAspect, T](val head:H, val value:PathF[T]) extends HPath with UnfilteredHPathMatcher[H,R,A,P,T] {
+  
+  protected override def pathToMatch:HPathCons[H, R, A, P, T] = this
+  
   override def toString = {
     s"HPathCons($value, $head)"
   }
@@ -37,6 +40,7 @@ object HPathCons {
   
   implicit def toHPathConsOpts[H <: HPath,R <: RelativePathAspect,A <: CanAddAspect,P <: CanHavePrefixAspect, T](value:HPathCons[H,R,A,P,T]) =
     new HPathConsOpts[H,R,A,P, T](value)
+    
 }
 
 
@@ -58,8 +62,36 @@ class HPathConsOpts[H <: HPath,R <: RelativePathAspect,A <: CanAddAspect,P <: Ca
   def toUriTemplate[Out <: HPath,TUP,PTH <: Path](t:TUP)(implicit ut:UT[HPathCons[H,R,A,P,T], Out], hf:HPathF[Out, TUP, PTH]) = hf( ut.apply(value) ).apply(t)  
 }
 
+object HPathSegmentAdder {
+  
+  implicit def toHPathCons[H <: HPath, R <: RelativePathAspect, T](p:HPathSegmentAdder[H,R,T]):HPathCons[H,R,CanAddPath, CanHavePathAsPrefix,T] = 
+    p.path
 
-class HPathSegmentAdder[+H <: HPath, +R <: RelativePathAspect, +T](path:HPathCons[H,R,CanAddPath, CanHavePathAsPrefix,T])  {
+  implicit def toHPathConsOps[H <: HPath, R <: RelativePathAspect, T](p:HPathSegmentAdder[H,R,T]) =
+    new HPathConsOpts[H,R,CanAddPath,CanHavePathAsPrefix, T](p.path)
+    
+  implicit def toHPathOps[H <: HPath, R <: RelativePathAspect, T](h:HPathSegmentAdder[H,R,T]) = 
+    new HPathOps[HPathCons[H,R,CanAddPath, CanHavePathAsPrefix,T]](h.path)
+  
+}
+
+object HParamAdder {
+  
+  implicit def toHPathCons[H <: HPath, R <: RelativePathAspect, P <: CanHavePrefixAspect,T](p:HParamAdder [H,R,P,T]):HPathCons[H,R,CanAddParam,P,T] = 
+    p.path
+
+  implicit def toHPathConsOps[H <: HPath, R <: RelativePathAspect, P <: CanHavePrefixAspect,T](p:HParamAdder [H,R,P,T]) =
+    new HPathConsOpts[H,R,CanAddParam,P,T](p.path)
+
+  implicit def toHPathOps[H <: HPath, R <: RelativePathAspect, P <: CanHavePrefixAspect,T](p:HParamAdder [H,R,P,T]) = 
+    new HPathOps[HPathCons[H,R,CanAddParam,P,T]](p.path)  
+    
+}
+
+
+class HPathSegmentAdder[+H <: HPath, +R <: RelativePathAspect, T](val path:HPathCons[H,R,CanAddPath, CanHavePathAsPrefix,T]) extends UnfilteredHPathMatcher[H,R,CanAddPath, CanHavePathAsPrefix,T]  {
+  
+  protected override def pathToMatch:HPathCons[H,R,CanAddPath, CanHavePathAsPrefix,T] = path
   
   def add(sg:String) = HPathConsFactory[R,CanAddPath, CanHavePathAsPrefix].create(path.head, path.value.addPath(PathSg(Seq(sg))))
   def / (sg:String) = add(sg)
@@ -83,7 +115,9 @@ class HPathSegmentAdder[+H <: HPath, +R <: RelativePathAspect, +T](path:HPathCon
   
 }
 
-class HParamAdder[+H <: HPath, +R <: RelativePathAspect, P <: CanHavePrefixAspect,T](path:HPathCons[H,R,CanAddParam,P,T])  {
+class HParamAdder[+H <: HPath, +R <: RelativePathAspect, P <: CanHavePrefixAspect,T](val path:HPathCons[H,R,CanAddParam,P,T]) extends UnfilteredHPathMatcher[H,R,CanAddParam,P,T] {
+  
+  protected override def pathToMatch:HPathCons[H,R,CanAddParam,P,T] = path
   
   def addParam(nm:String, value:String) = HPathConsFactory[R,CanAddParam,P].create(path.head, path.value.addParam(QParamSg(nm, value)))
   def && (nm:String, value:String) = addParam(nm, value)

@@ -18,20 +18,22 @@ trait Path extends UnfilteredMatcher {
   
   def render:String = {
     val sb = new StringBuilder
-    base.foreach( sb.append(_) )
+    base.foreach{ bs =>
+      if (bs.endsWith("/")) sb.append(sb.substring(0, bs.length-1))
+      else sb.append(bs) 
+    }
     
     val pars =
       if (params.isEmpty) ""
       else (Seq(params.head.render(true)) ++ params.tail.map(_.render(false))).mkString("")
 
     if (!path.isEmpty) {  
-      if (!(base.map(_.endsWith("/")).getOrElse(false) || path.path.head.startsWith("/"))) {
-        sb.append("/")
-      }
+      sb.append("/")
       sb.append(path.path.mkString("/"))
+      sb.append(pars)
+    } else {
+      sb.append(pars)
     }
-    
-    sb.append(pars)
     
     fragment.foreach{ frg =>
       sb.append("#"+frg)
@@ -47,6 +49,9 @@ object Path  {
   lazy val empty = apply(None, PathSg.empty, Nil, None)
   
   def apply(base:Option[String], path:PathSg, params:Seq[QParamSg], fragment:Option[String]) = BasePath[RelativePathAspect, CanAddAspect, CanHavePrefixAspect](base,path,params,fragment)
+  def apply(path:PathSg, params:Seq[QParamSg]) = BasePath[IsRelativePath, CanAddParam, CanHavePathAsPrefix](None,path,params,None)
+  def apply(path:PathSg) = BasePath[IsRelativePath, CanAddPath, CanHavePathAsPrefix](None,path,Nil,None)
+  def apply(params:Seq[QParamSg]) = BasePath[IsRelativePath, CanAddParam, CanHaveParamsAsPrefix](None,PathSg.empty,params,None)
   
   def unapply(p:Path) = Some(p.base, p.path, p.params, p.fragment)
 }
@@ -136,25 +141,3 @@ class AbsolutePathFactory[A <: CanAddAspect](path:BasePath[IsRelativePath,A,_]) 
   
 }
 
-object Raz {
-  
-  lazy val empty = BasePath[IsRelativePath, CanAddPath, CanHavePathAsPrefix](None,PathSg.empty, Seq.empty, None)
-  
-  def add(sg:String) = BasePath[IsRelativePath,CanAddPath, CanHavePathAsPrefix](None, PathSg(Seq(sg)), Seq.empty, None)
-  def / (sg:String) = add(sg)
- 
-  def add[T1](pf: PathSgF[T1]) = HPathConsFactory[IsRelativePath, CanAddPath, CanHavePathAsPrefix].create(HPathNil(empty), pf.pathf)
-  def /[T1](pf: PathSgF[T1]) = add(pf)
-  
-  def addParam(nm:String, value:String) = BasePath[IsRelativePath, CanAddParam, CanHaveParamsAsPrefix](None, PathSg.empty, Seq(QParamSg(nm, value)), None)
-  def && (nm:String, value:String) = addParam(nm, value)
-  
-  def addParam[T1](pf: ParamSgF[T1]) = HPathConsFactory[IsRelativePath, CanAddParam, CanHaveParamsAsPrefix].create(
-      HPathNil(BasePath[IsRelativePath, CanAddParam, CanHaveParamsAsPrefix](None,PathSg.empty, Seq.empty, None)), pf.pathf)
-      
-  def &&[T1](pf: ParamSgF[T1]) = addParam(pf)
-  
-  def fragment(frg:String) = BasePath[IsRelativePath, CanAddAspect, CanHaveParamsAsPrefix](None, PathSg.empty, Seq.empty, Some(frg))
-  def ## (str:String) = fragment(str)
-  
-}

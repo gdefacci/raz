@@ -4,9 +4,9 @@ case class PathMatchResult[+T, +R](value:T, rest:R) {
   def mapValue[P,T1 >: T](f:T1 => P):PathMatchResult[P,R] = PathMatchResult[P,R](f(value), rest)
 }
 
-trait PathF[+T] {
+trait PathF[T] {
   
-  private[raz] def apply[T1 >: T](t:T1):Path
+  private[raz] def apply(t:T):Path
   private[raz] def matchPath(p:Path):Option[PathMatchResult[T, Path]]
   private[raz] def suffix:Path
 //  private[raz] def fragment:Option[String]
@@ -96,9 +96,9 @@ object PathF {
   
 }
 
-class PathFImpl[+T](f:T=>Path, matcher:Path => Option[PathMatchResult[T, Path]], val suffix:Path, val expansionKind:ExpansionKind.Value) extends PathF[T]{
-  private[raz] def apply[T1 >: T](t:T1):Path = {
-    PathHelper.merge(f(t.asInstanceOf[T]), suffix)
+class PathFImpl[T](f:T=>Path, matcher:Path => Option[PathMatchResult[T, Path]], val suffix:Path, val expansionKind:ExpansionKind.Value) extends PathF[T]{
+  private[raz] def apply(t:T):Path = {
+    PathHelper.merge(f(t), suffix)
   }
   
   def matchPath(p:Path):Option[PathMatchResult[T, Path]] = matcher(p).flatMap { r =>

@@ -93,12 +93,12 @@ object Sample {
 //// 
 ////    val U1 = u
 ////    
-////    u.toF.apply(21,22) match {
+////    u(21,22) match {
 ////      case U1.Matcher.Match((21, 22))  => ()
 ////      case _ => throw new Exception("")
 ////    }
 ////    
-////    u.toF.apply(21,22) match {
+////    u(21,22) match {
 ////      case U1.Match((21, 22))  => ()
 ////      case _ => throw new Exception("")
 ////    }
@@ -139,8 +139,8 @@ object Sample {
 //
 //    val ut = u.toUriTemplate
 //    
-//    println( ut.toF.apply("param1", "param2", "param3").render )
-//    println( ut.matcher.apply(ut.toF.apply("p1", "p2", "p3")) )
+//    println( ut("param1", "param2", "param3").render )
+//    println( ut.matchPath(ut("p1", "p2", "p3")) )
 //    
 //  }
 //  
@@ -162,7 +162,7 @@ object Sample {
     
     val u1 = u("bbbb", Some(3))
     println( u("bbb", Some(3)).render )
-//    println( u.matcher.apply(u1) )
+//    println( u.matchPath(u1) )
     
     assert(u.matchPath(u1).get.value == ("bbbb" -> Some(3)))
   }

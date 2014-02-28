@@ -10,7 +10,7 @@ trait HMapper[-HP <: HPath, TUP] {
 object HMapper {
 
   private type Root = HPathNil[IsRelativePath, CanAddPath, CanHavePathAsPrefix]
-  private val root = HPathNil[IsRelativePath, CanAddPath, CanHavePathAsPrefix](Raz.empty)
+  private val root = HPathNil[IsRelativePath, CanAddPath, CanHavePathAsPrefix](BasePath[IsRelativePath, CanAddPath, CanHavePathAsPrefix](None,PathSg.empty, Seq.empty, None))
 
   class BaseMapper[HP <: HPath, R <: RelativePathAspect, A <: CanAddAspect, P <: CanHavePrefixAspect, T1, TUP] extends HMapper[HPathCons[HP, R, A, P, T1], TUP] {
     type Out[T] = HPathCons[HPathNil[R,A,P], R, A, P, T]
