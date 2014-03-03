@@ -9,7 +9,6 @@ trait PathF[T] {
   private[raz] def apply(t:T):Path
   private[raz] def matchPath(p:Path):Option[PathMatchResult[T, Path]]
   private[raz] def suffix:Path
-//  private[raz] def fragment:Option[String]
   
   private[raz] def expansionKind:ExpansionKind.Value
   
