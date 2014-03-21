@@ -2,8 +2,6 @@ package org.obl.raz
 
 import org.junit._
 
-import PathFs._
-
 class AppendTest {
 
   @Test

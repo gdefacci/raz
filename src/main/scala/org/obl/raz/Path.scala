@@ -1,6 +1,6 @@
 package org.obl.raz
 
-trait Path extends UnfilteredMatcher {
+trait Path extends UnfilteredMatcher with PathRenderer {
   
   def base:Option[String]
   def path:PathSg
@@ -16,31 +16,31 @@ trait Path extends UnfilteredMatcher {
     case x => false
   }
   
-  def render:String = {
-    val sb = new StringBuilder
-    base.foreach{ bs =>
-      if (bs.endsWith("/")) sb.append(sb.substring(0, bs.length-1))
-      else sb.append(bs) 
-    }
-    
-    val pars =
-      if (params.isEmpty) ""
-      else (Seq(params.head.render(true)) ++ params.tail.map(_.render(false))).mkString("")
-
-    if (!path.isEmpty) {  
-      sb.append("/")
-      sb.append(path.path.mkString("/"))
-      sb.append(pars)
-    } else {
-      sb.append(pars)
-    }
-    
-    fragment.foreach{ frg =>
-      sb.append("#"+frg)
-    }
-    
-    sb.toString
-  }
+//  def render:String = {
+//    val sb = new StringBuilder
+//    base.foreach{ bs =>
+//      if (bs.endsWith("/")) sb.append(sb.substring(0, bs.length-1))
+//      else sb.append(bs) 
+//    }
+//    
+//    val pars =
+//      if (params.isEmpty) ""
+//      else (Seq(params.head.render(true)) ++ params.tail.map(_.render(false))).mkString("")
+//
+//    if (!path.isEmpty) {  
+//      sb.append("/")
+//      sb.append(path.path.mkString("/"))
+//      sb.append(pars)
+//    } else {
+//      sb.append(pars)
+//    }
+//    
+//    fragment.foreach{ frg =>
+//      sb.append("#"+frg)
+//    }
+//    
+//    sb.toString
+//  }
   
   override def toString = render
 }
@@ -140,4 +140,22 @@ class AbsolutePathFactory[A <: CanAddAspect](path:BasePath[IsRelativePath,A,_]) 
   def at(base:String) = BasePath[IsAbsolutePath,A,CanHavePrefixAspect](Some(base), path.path, path.params, path.fragment)
   
 }
+
+//class AbsoluteHPathNilFactory[A <: CanAddAspect](path:HPathNil[IsRelativePath,A,_]) {
+//  
+//  def at(base:String) = {
+//    val np = new AbsolutePathFactory[A](path.path).at(base)
+//    HPathNil[IsAbsolutePath,A,CanHavePrefixAspect](np)
+//  }
+//  
+//}
+//
+//class AbsoluteHPathConsFactory[H <: HPath, T, A <: CanAddAspect](path:HPathCons[H, IsRelativePath,A,_, T])(implicit ) {
+//  
+//  def at(base:String) = {
+//    val np = new AbsolutePathFactory[A](path.path).at(base)
+//    HPathNil[IsAbsolutePath,A,CanHavePrefixAspect](np)
+//  }
+//  
+//}
 

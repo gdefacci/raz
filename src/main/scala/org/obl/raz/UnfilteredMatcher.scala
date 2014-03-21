@@ -11,7 +11,7 @@ private[raz] object FromUnfiltered {
         val params: Seq[QParamSg] = pars.flatMap { e =>
           e._2.map(v => QParamSg(e._1, Some(v)))
         }.toSeq
-        val psgs = PathSg(elems)
+        val psgs = PathSg(elems.map(java.net.URLDecoder.decode))
         Some(Path(None, psgs, params, None))
       }
       case x => None

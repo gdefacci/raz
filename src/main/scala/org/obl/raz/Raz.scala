@@ -26,7 +26,7 @@ trait RootHPathFactory[R <: RelativePathAspect] {
  
 }
 
-object Raz extends RootHPathFactory[IsRelativePath] {
+object Raz extends RootHPathFactory[IsRelativePath]  {
   
   lazy val base = None
 

@@ -37,7 +37,6 @@ object NpathMain {
 
   def testHPath = {
 
-    import PathFs._
 
     val p1 = Raz / "bubu" / pathVar[Int] / "bb" && ("aa", "17") && paramValueVar[String]("name") && paramValueVar[Int]("name1")
 
@@ -50,7 +49,6 @@ object NpathMain {
 
   def testHPath_concat_1 = {
 
-    import PathFs._
 
     val p1 = Raz / "bubu" / pathVar[Int] / pathVar[String]
     val p1par = Raz && paramValueVar[Int]("p1")
@@ -75,8 +73,6 @@ object NpathMain {
 
   def testHPath_concat_2 = {
 
-    import PathFs._
-
     val p1 = Raz / "bubu" / pathVar[Int] / pathVar[String] / pathVar[Int] / pathVar[String]
     val p1a = HPathNil(Raz / "bubu") 
     val p1b = Raz / "p1" && ("bubu", "bibi") && paramValueVar[String]("name")
@@ -94,8 +90,6 @@ object NpathMain {
   
   def test_concat_3 = {
     
-    import PathFs._
-    
     val u3 = Raz && paramValueVar[String]("aaa")
     val u4 = Raz && paramValueVar[String]("hhaaa")
     
@@ -104,8 +98,6 @@ object NpathMain {
   }
   
   def test_concat3 = {
-    import PathFs._
-    
     val u21 = Raz.add("a").addParam(paramValueVar[String]("aaa"))
     val u41 = Raz.addParam("yyyyera", "yeahhh").addParam(paramValueVar[String]("hhaaa")).addParam(paramValueVar[String]("hhaaaa")).addParam("YY", "XX").addParam(paramValueVar[String]("ccc"))
 
@@ -113,7 +105,6 @@ object NpathMain {
   }
 
    def testMatchPath = {
-     import PathFs._
 	  val p1 = Raz / "bubu" / pathVar[Int] / pathVar[String]
 	  val pt1 = p1(12, "bubu")
      
@@ -142,7 +133,6 @@ object NpathMain {
    case class Cl1(a:Int)
    case class Cl2(a:Int, b:String)
    def test_map = {
-     import PathFs._
 	  val p1 = Raz / "bubu" / pathVar[Int] 
 	 
      val cnv = Converter(Cl1, Cl1.unapply)
@@ -162,11 +152,10 @@ object NpathMain {
    
    
    def test_ut = {
-	  import PathFs._
 	  val p1 = Raz / "bubu" / pathVar[Int] / "dudu" / pathVar[Int] && paramValueVar[String]("par") 
 	 
 	  
-	  println( p1.toUriTemplate("s", "dd", "parVAlue").render )
+	  println( p1.toUriTemplate("s", "dd", "parVAlue") )
      
    }
 }

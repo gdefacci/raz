@@ -2,14 +2,14 @@ package org.obl.raz
 
 object PathHelper {
 
-  def merge(paths:Path*):Path = {
-    var p = PathSg.empty
-    val q = collection.mutable.Buffer.empty[QParamSg]
+  def merge(phd:Path, paths:Path*):Path = {
+    var p = phd.path
+    val q = collection.mutable.Buffer.empty[QParamSg] ++ phd.params
     paths.foreach { pth =>
       p = p.add(pth.path)
       q ++= pth.params
     }
-    Path(paths.headOption.flatMap(_.base),p,q, paths.lastOption.flatMap(_.fragment))
+    Path(phd.base,p,q, paths.lastOption.flatMap(_.fragment))
   }
   
   /**

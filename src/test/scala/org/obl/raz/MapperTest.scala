@@ -6,7 +6,6 @@ class MapperTest {
 
   case class Cl1(a:Int, b:String, c:Boolean)
   
-  import PathFs._
   import TestHelper._
   
   @Test

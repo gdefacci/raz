@@ -110,7 +110,7 @@ class PathFImpl[T](f:T=>Path, matcher:Path => Option[PathMatchResult[T, Path]], 
   def withFragment(frg:String) = new PathFImpl[T](f,matcher, Path(suffix.base, suffix.path, suffix.params, Some(frg)), expansionKind)
 }
 
-object PathFs {
+trait PathFs {
   private[raz] def pathVarMatcher[T](sc:StringConverter[T]):PathSg=>Option[PathMatchResult[T,PathSg]] = { sg =>
     sc.unapply(sg.path.headOption).map { t =>
       PathMatchResult(t, PathSg(sg.path.tail))

@@ -10,8 +10,6 @@ object UnfilteredMain {
   
       import unfiltered.filter.Intent
   
-      import PathFs._
-      
       val Pth = Raz / ""
       val Pth1 = Raz / "p1" / pathVar[String] / pathVar[Int]
   

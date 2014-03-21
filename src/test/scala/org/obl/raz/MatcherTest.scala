@@ -6,8 +6,6 @@ import org.junit.Assert._
 
 class MatcherTest {
 
-  import PathFs._
-  
   @Test
   def testMatcher1 = {
 

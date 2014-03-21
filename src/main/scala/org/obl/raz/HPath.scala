@@ -14,7 +14,6 @@ object HPath {
 }
 
 case class HPathNil[+R <: RelativePathAspect,+A <: CanAddAspect,+P <: CanHavePrefixAspect](path:BasePath[R,A,P]) extends HPath {
-  
   override def toString = s"HPathNil($path)"
 }
 
@@ -50,6 +49,8 @@ class HPathOps[H <: HPath](value:H) {
   def concat[H1 <: HPath, Out <: HPath](h1:H1)(implicit happ:HAppend[H, H1, Out]):Out = happ.concat(value, h1)
   
   def matchPath[T](p:Path)(implicit pathMatcher:PathMatcher[H,T]):Option[PathMatchResult[T, Path]] = pathMatcher.matcher(value).apply(p)
+  
+  def at[H1 <: HPath](base:String)(implicit atAux:AtAux[H, H1]) = atAux.apply(value)(base)
 }
 
 class HPathConsOpts[H <: HPath,R <: RelativePathAspect,A <: CanAddAspect,P <: CanHavePrefixAspect, T](value:HPathCons[H,R,A,P,T]) {
@@ -57,9 +58,7 @@ class HPathConsOpts[H <: HPath,R <: RelativePathAspect,A <: CanAddAspect,P <: Ca
   def mapTo[P1, PTH <: Path, TUP](cnv:Converter[TUP,P1])(implicit mapper:HMapper[HPathCons[H,R,A,P,T], TUP], hf:HPathF[HPathCons[H,R,A,P,T], TUP, PTH], pm:PathMatcher[HPathCons[H,R,A,P,T],TUP]) = 
     mapper.create(value, cnv, hf.apply(value), pm.matcher(value) )
 
-//  def toUriTemplate[Out](implicit ut:UT[HPathCons[H,R,A,P,T], Out]) = ut(value)  
-  
-  def toUriTemplate[Out <: HPath,TUP,PTH <: Path](t:TUP)(implicit ut:UT[HPathCons[H,R,A,P,T], Out], hf:HPathF[Out, TUP, PTH]) = hf( ut.apply(value) ).apply(t)  
+  def toUriTemplate[Out <: HPath,TUP,PTH <: Path](t:TUP)(implicit ut:UT[HPathCons[H,R,A,P,T], Out], hf:HPathF[Out, TUP, PTH]):String = hf( ut.apply(value) ).apply(t).renderUriTemplate  
 }
 
 object HPathSegmentAdder {

@@ -8,7 +8,6 @@ import unfiltered.request._
 import unfiltered.request.{ Path => UPath }
 import dispatch.classic._
 import org.obl.raz._
-import PathFs._
 import org.junit.runners.Suite.SuiteClasses
 
 @RunWith(value=classOf[org.junit.runners.Suite])
@@ -25,9 +24,6 @@ class UnfilteredSuite
 
 @RunWith(classOf[JUnitRunner])
 class UnfilteredTest0 extends FunsuiteServed with ShouldMatchers {
-
-  System.setProperty("http.proxyHost", "")
-  System.setProperty("http.proxyPort", "")
 
   val Pth1 = Raz / "a"
   val Pth2 = Raz / "bb" / "cc"
@@ -60,9 +56,6 @@ class UnfilteredTest0 extends FunsuiteServed with ShouldMatchers {
 @RunWith(classOf[JUnitRunner])
 class UnfilteredTest0a extends FunsuiteServed with ShouldMatchers {
 
-  System.setProperty("http.proxyHost", "")
-  System.setProperty("http.proxyPort", "")
-
   val Pth1 = Raz / "a"
   val Pth2 = Raz / "bb" / "cc"
   val Pth3 = Raz && ("a", "bb")
@@ -88,9 +81,6 @@ class UnfilteredTest0a extends FunsuiteServed with ShouldMatchers {
 @RunWith(classOf[JUnitRunner])
 class UnfilteredTest extends FunsuiteServed with ShouldMatchers {
 
-  System.setProperty("http.proxyHost", "")
-  System.setProperty("http.proxyPort", "")
-
   val Pth1 = Raz / pathVar[String]
 
   def setup = _.filter(unfiltered.filter.Planify {
@@ -110,9 +100,6 @@ class UnfilteredTest extends FunsuiteServed with ShouldMatchers {
 @RunWith(classOf[JUnitRunner])
 class UnfilteredTest1 extends FunsuiteServed with ShouldMatchers {
 
-  System.setProperty("http.proxyHost", "")
-  System.setProperty("http.proxyPort", "")
-
   val Pth1 = Raz / pathVar[String]
   val Pth2 = Pth1 / "abba" / pathVar[String]
 
@@ -129,9 +116,6 @@ class UnfilteredTest1 extends FunsuiteServed with ShouldMatchers {
 
 @RunWith(classOf[JUnitRunner])
 class UnfilteredTest2a extends FunsuiteServed with ShouldMatchers {
-
-  System.setProperty("http.proxyHost", "")
-  System.setProperty("http.proxyPort", "")
 
   val Pth2 = Raz / pathVar[String] / "abba" / pathVar[String]
 
@@ -150,9 +134,6 @@ class UnfilteredTest2a extends FunsuiteServed with ShouldMatchers {
 @RunWith(classOf[JUnitRunner])
 class UnfilteredTest2 extends FunsuiteServed with ShouldMatchers {
 
-  System.setProperty("http.proxyHost", "")
-  System.setProperty("http.proxyPort", "")
-
   val Pth2 = Raz / pathVar[String] / "abba" / pathVar[String]
 
   def setup = _.filter(unfiltered.filter.Planify {
@@ -169,9 +150,6 @@ class UnfilteredTest2 extends FunsuiteServed with ShouldMatchers {
 
 @RunWith(classOf[JUnitRunner])
 class UnfilteredTest3a extends FunsuiteServed with ShouldMatchers {
-
-  System.setProperty("http.proxyHost", "")
-  System.setProperty("http.proxyPort", "")
 
   val Pth2 = Raz / pathVar[String] / "abba" && paramValueVar[String]("bb")
 
@@ -195,7 +173,7 @@ class UnfilteredTest3a extends FunsuiteServed with ShouldMatchers {
 @RunWith(classOf[JUnitRunner])
 class UnfilteredTest3b extends FunsuiteServed with ShouldMatchers {
 
-  System.setProperty("http.proxyHost", "")
+  
   System.setProperty("http.proxyPort", "")
 
   val Pth2 = Raz / pathVar[String] / "abba" && paramValueVar[String]("bb")

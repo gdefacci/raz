@@ -14,8 +14,6 @@ object Sample {
 //    test1_# 
   }
   
-  import PathFs._
-  
   def typeOf[T](t:T)(implicit ct:Manifest[T]) = ct
 
   def appendSample = {
@@ -130,7 +128,7 @@ object Sample {
     u(1,1)
 //    val ut = u.toUriTemplate("par1","par2")
     
-    println( u.toUriTemplate("param1", "param2").render )
+    println( u.toUriTemplate("param1", "param2") )
     
   }
 //  
@@ -152,7 +150,7 @@ object Sample {
     println( u(11, Seq(7,9,16)).render )
     println( u.matchPath(u(11, Seq(7,9,16))) )
     
-    println( u.toUriTemplate("intPar", "intSeq").render)
+    println( u.toUriTemplate("intPar", "intSeq"))
   }
   
 //  
@@ -196,12 +194,12 @@ object Sample {
      val utp1 = Raz.add("a").add("b").add(pathVar[Int]).add(pathVar[Int]).addFragment("f").toUriTemplate("a","b")
      
      println(up1(11,22).render)
-     println(utp1.render)
-     assert("/a/b/{a}/{b}#f" == utp1.render)
+     println(utp1)
+     assert("/a/b/{a}/{b}#f" == utp1)
      
      val utp2 = u.toUriTemplate("sym1", "sym2")
      
-     assert("/a/b/{sym1}?ccc={sym2}#myfrag" == utp2.render)
+     assert("/a/b/{sym1}?ccc={sym2}#myfrag" == utp2)
    }
  
    def test1_# = {
@@ -209,8 +207,8 @@ object Sample {
 
      val utp1 = Raz.add("a").add("b").add(pathVar[Int]).add(pathVar[Int]).addFragment("f").toUriTemplate("a","b")
      
-     println(utp1.render)
-     assert("/a/b/{a}/{b}#f" == utp1.render)
+     println(utp1)
+     assert("/a/b/{a}/{b}#f" == utp1)
      
    }
 }

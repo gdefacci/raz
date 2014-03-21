@@ -17,7 +17,7 @@ object HPathF {
     def apply(h:H):T => PTH = f(h)
   }
   
-  private def sum[R <: RelativePathAspect,A <: CanAddAspect,P <: CanHavePrefixAspect](pths:Path*) = toBasePath[R,A,P](PathHelper.merge(pths:_*))
+  private def sum[R <: RelativePathAspect,A <: CanAddAspect,P <: CanHavePrefixAspect](phd:Path, pths:Path*) = toBasePath[R,A,P](PathHelper.merge(phd, pths:_*))
   
   implicit def toHPathF1[R <: RelativePathAspect,A <: CanAddAspect,P <: CanHavePrefixAspect,T1] =
     apply[HPath1[R,A,P,T1], T1,BasePath[R,A,P]](h => t1 => sum[R,A,P](h.head.path,  h.value.apply(t1)))  
