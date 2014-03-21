@@ -61,4 +61,15 @@ class FTest {
      assertEquals("/a/ab%20ba/{sym1}?ccc={sym2}#myfrag", utp2a)
    }
   
+  @Test
+  def testUT1 = {
+   val state = Raz / "countries" / pathVar[String] / "states" / pathVar[String] 
+
+    assert("/countries/{it}/states/{mi}" == state("{it}", "{mi}").renderUriTemplate)
+    		
+   println(state.toUriTemplate("country", "state"))
+    
+    
+  }
+  
 }

@@ -35,7 +35,7 @@ object Sample {
     
     val street = Raz / "cities" / pathVar[Int] && paramValueVar[String]("street") && paramValueVar[String]("number")
     
-    assert("/cities/123?street=Baker street&number=12a" == street(123, "Baker street", "12a").render)
+    assert("/cities/123?street=Baker+street&number=12a" == street(123, "Baker street", "12a").render)
     assert("/cities/{city-id}?street={street}&number={number}" == street.toUriTemplate("city-id", "street", "number"))
 
     /**
@@ -52,7 +52,7 @@ object Sample {
     
     var fullAdrs = state.concat( street )
 
-    assert("/countries/it/states/mi/cities/123?street=Baker street&number=12a" == fullAdrs("it", "mi", 123, "Baker street", "12a").render)
+    assert("/countries/it/states/mi/cities/123?street=Baker+street&number=12a" == fullAdrs("it", "mi", 123, "Baker street", "12a").render)
 
     assert("/countries/{country}/states/{state}/cities/{city-id}?street={street}&number={street-number}" == fullAdrs.toUriTemplate("country", "state", "city-id", "street", "street-number"))
 
@@ -64,7 +64,7 @@ object Sample {
     
     val mstreet = street.mapTo(Converter(CityStreetNumber.tupled, CityStreetNumber.unapply))
     
-    assert("/cities/123?street=Baker street&number=12a" == mstreet(CityStreetNumber(123, "Baker street", "12a")).render)
+    assert("/cities/123?street=Baker+street&number=12a" == mstreet(CityStreetNumber(123, "Baker street", "12a")).render)
     
     /**
      * toUriTemplate is not avaiable on mstreet

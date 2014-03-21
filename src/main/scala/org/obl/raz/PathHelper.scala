@@ -3,7 +3,7 @@ package org.obl.raz
 object PathHelper {
 
   def merge(phd:Path, paths:Path*):Path = {
-    var p = phd.path
+    var p = PathSg(phd.path.path)
     val q = collection.mutable.Buffer.empty[QParamSg] ++ phd.params
     paths.foreach { pth =>
       p = p.add(pth.path)

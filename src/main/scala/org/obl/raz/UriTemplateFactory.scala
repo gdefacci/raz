@@ -21,24 +21,26 @@ object UriTemplateFactory {
     import PathHelper._
 
     pathf.expansionKind match {
-      case x if (x == ExpansionKind.stringExpansion) => (name: String) =>
-        PathHelper.merge(Path(None, PathSg(stringExpansion(name).toSeq), Nil, None), pathf.suffix)
-        case x if (x == ExpansionKind.reservedExpansion) => (name: String) =>
+      case x if (x == ExpansionKind.stringExpansion) => { (name: String) =>
+        PathHelper.merge(Path(None, PathSg(stringExpansion(name).toSeq), Nil, None), Path.empty)
+      }
+      case x if (x == ExpansionKind.reservedExpansion) => { (name: String) =>
         PathHelper.merge(Path(None, PathSg(reservedExpansion(name).toSeq), Nil, None), pathf.suffix)
-        case ExpansionKind.ParamValueStringExpansion(nm) => (name: String) =>
+      }
+      case ExpansionKind.ParamValueStringExpansion(nm) => { (name: String) =>
         PathHelper.merge(Path(None, PathSg.empty, QParamSg(nm, stringExpansion(name)) :: Nil, None), pathf.suffix)
-        case ExpansionKind.ParamValueReservedExpansion(nm) => (name: String) =>
+      }
+      case ExpansionKind.ParamValueReservedExpansion(nm) => { (name: String) =>
         PathHelper.merge(Path(None, PathSg.empty, QParamSg(nm, reservedExpansion(name)) :: Nil, None), pathf.suffix)
-        case ExpansionKind.formStyleQueryExpansion => {
+      }
+      case ExpansionKind.formStyleQueryExpansion => {
         val queryParamRenderer: (Boolean, (String, Option[String])) => String = { (isFirst, nameValue) =>
           if (isFirst) formStyleExpansion(nameValue._1).get
           else formStyleContinuation(nameValue._1).get
         }
-        (name: String) =>
-          {
-            println("------------- " + name)
-            PathHelper.merge(Path(None, PathSg.empty, QParamSg(name, None) :: Nil, None), pathf.suffix)
-          }
+        { (name: String) =>
+          PathHelper.merge(Path(None, PathSg.empty, QParamSg(name, None) :: Nil, None), pathf.suffix)
+        }
       }
     }
   }

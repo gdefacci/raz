@@ -16,32 +16,6 @@ trait Path extends UnfilteredMatcher with PathRenderer {
     case x => false
   }
   
-//  def render:String = {
-//    val sb = new StringBuilder
-//    base.foreach{ bs =>
-//      if (bs.endsWith("/")) sb.append(sb.substring(0, bs.length-1))
-//      else sb.append(bs) 
-//    }
-//    
-//    val pars =
-//      if (params.isEmpty) ""
-//      else (Seq(params.head.render(true)) ++ params.tail.map(_.render(false))).mkString("")
-//
-//    if (!path.isEmpty) {  
-//      sb.append("/")
-//      sb.append(path.path.mkString("/"))
-//      sb.append(pars)
-//    } else {
-//      sb.append(pars)
-//    }
-//    
-//    fragment.foreach{ frg =>
-//      sb.append("#"+frg)
-//    }
-//    
-//    sb.toString
-//  }
-  
   override def toString = render
 }
 

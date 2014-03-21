@@ -58,7 +58,10 @@ class HPathConsOpts[H <: HPath,R <: RelativePathAspect,A <: CanAddAspect,P <: Ca
   def mapTo[P1, PTH <: Path, TUP](cnv:Converter[TUP,P1])(implicit mapper:HMapper[HPathCons[H,R,A,P,T], TUP], hf:HPathF[HPathCons[H,R,A,P,T], TUP, PTH], pm:PathMatcher[HPathCons[H,R,A,P,T],TUP]) = 
     mapper.create(value, cnv, hf.apply(value), pm.matcher(value) )
 
-  def toUriTemplate[Out <: HPath,TUP,PTH <: Path](t:TUP)(implicit ut:UT[HPathCons[H,R,A,P,T], Out], hf:HPathF[Out, TUP, PTH]):String = hf( ut.apply(value) ).apply(t).renderUriTemplate  
+  def toUriTemplate[Out <: HPath,TUP,PTH <: Path](t:TUP)(implicit ut:UT[HPathCons[H,R,A,P,T], Out], hf:HPathF[Out, TUP, PTH]):String = {
+    val pth = hf ( ut.apply(value) ).apply(t)
+    pth.renderUriTemplate
+  }
 }
 
 object HPathSegmentAdder {
