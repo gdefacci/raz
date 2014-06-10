@@ -5,12 +5,13 @@ object RazBuild  extends Build {
   
   val buildOrganization = "org.obl"
   val buildVersion      = "0.5-SNAPSHOT"
-  val buildScalaVersion = "2.10.3"
+  val buildScalaVersion = "2.10.4"
 
   val buildSettings = Defaults.defaultSettings ++ Seq (
     organization 			:= buildOrganization,
     version      			:= buildVersion,
     scalaVersion 			:= buildScalaVersion
+    //, crossScalaVersions := Seq("2.10.4", "2.11.0") // disabled since unfiltered-scalatest is not avaible for 2.11.0
   )
 
   val servletDep = "javax.servlet" % "servlet-api" % "2.5" 

@@ -1,10 +1,5 @@
 package org.obl.raz
 
-
-/*
- * FIXME: Questa classe e' usata solo per effetuare il rendering di UriTemplate. Purtoppo per far cio ciene creato un  BasePath e su tale istanza e' invocato soltanto il metotdo
- * uriTemplatyeRender
- */
 trait UT[H, Out] {
 
   def apply(h: H): Out

@@ -8,8 +8,8 @@ object HPath {
   implicit def toHPathSegmentAdder[H <: HPath, R <: RelativePathAspect, T](path:HPathCons[H,R,CanAddPath, CanHavePathAsPrefix,T]) =
     new HPathSegmentAdder[H, R, T](path)
     
-  implicit def toHParamAdder[H <: HPath, R <: RelativePathAspect, P <: CanHavePrefixAspect,T](path:HPathCons[H,R,CanAddParam,P,T]) =
-    new HParamAdder[H, R, P,T](path:HPathCons[H,R,CanAddParam,P,T]) 
+  implicit def toHParamAdder[H <: HPath, R <: RelativePathAspect, A <: NonFragmentPath, P <: CanHavePrefixAspect,T](path:HPathCons[H,R,A,P,T]) =
+    new HParamAdder[H, R, A, P,T](path:HPathCons[H,R,A,P,T]) 
    
 }
 
@@ -79,14 +79,14 @@ object HPathSegmentAdder {
 
 object HParamAdder {
   
-  implicit def toHPathCons[H <: HPath, R <: RelativePathAspect, P <: CanHavePrefixAspect,T](p:HParamAdder [H,R,P,T]):HPathCons[H,R,CanAddParam,P,T] = 
+  implicit def toHPathCons[H <: HPath, R <: RelativePathAspect, A <: NonFragmentPath, P <: CanHavePrefixAspect,T](p:HParamAdder [H,R,A,P,T]):HPathCons[H,R,A,P,T] = 
     p.path
 
-  implicit def toHPathConsOps[H <: HPath, R <: RelativePathAspect, P <: CanHavePrefixAspect,T](p:HParamAdder [H,R,P,T]) =
-    new HPathConsOpts[H,R,CanAddParam,P,T](p.path)
+  implicit def toHPathConsOps[H <: HPath, R <: RelativePathAspect, A <: NonFragmentPath, P <: CanHavePrefixAspect,T](p:HParamAdder [H,R,A,P,T]) =
+    new HPathConsOpts[H,R,A,P,T](p.path)
 
-  implicit def toHPathOps[H <: HPath, R <: RelativePathAspect, P <: CanHavePrefixAspect,T](p:HParamAdder [H,R,P,T]) = 
-    new HPathOps[HPathCons[H,R,CanAddParam,P,T]](p.path)  
+  implicit def toHPathOps[H <: HPath, R <: RelativePathAspect, A <: NonFragmentPath, P <: CanHavePrefixAspect,T](p:HParamAdder [H,R,A,P,T]) = 
+    new HPathOps[HPathCons[H,R,A,P,T]](p.path)  
     
 }
 
@@ -101,14 +101,14 @@ class HPathSegmentAdder[+H <: HPath, +R <: RelativePathAspect, T](val path:HPath
   def add[T1](pf: PathSgF[T1]) = HPathConsFactory[R, CanAddPath, CanHavePathAsPrefix].create(path, pf.pathf)
   def /[T1](pf: PathSgF[T1]) = add(pf)
   
-  def addParam(nm:String, value:String) = HPathConsFactory[R, CanAddParam, CanHavePathAsPrefix].create(path.head, path.value.addParam(QParamSg(nm, value)))
-  def && (nm:String, value:String) = addParam(nm, value)
-
-  def addParam[T1](pf: ParamSgF[T1]) = HPathConsFactory[R, CanAddParam, CanHavePathAsPrefix].create(path, pf.pathf)
-  def &&[T1](pf: ParamSgF[T1]) = addParam(pf)
+//  def addParam(nm:String, value:String) = HPathConsFactory[R, CanAddParam, CanHavePathAsPrefix].create(path.head, path.value.addParam(QParamSg(nm, value)))
+//  def && (nm:String, value:String) = addParam(nm, value)
+//
+//  def addParam[T1](pf: ParamSgF[T1]) = HPathConsFactory[R, CanAddParam, CanHavePathAsPrefix].create(path, pf.pathf)
+//  def &&[T1](pf: ParamSgF[T1]) = addParam(pf)
   
-  def addFragment(frg:String) = HPathConsFactory[R, CanAddAspect, CanHavePathAsPrefix].create(path.head, path.value.withFragment(frg))
-  def ## (str:String) = addFragment(str)
+//  def addFragment(frg:String) = HPathConsFactory[R, CanAddAspect, CanHavePathAsPrefix].create(path.head, path.value.withFragment(frg))
+//  def ## (str:String) = addFragment(str)
   
   def append[P1 <: CanAddAspect, PA <: CanHavePathAsPrefix](p:BasePath[IsRelativePath, P1, PA]):HPathCons[H,R,P1,CanHavePathAsPrefix,T] = {
     HPathConsFactory[R,P1, CanHavePathAsPrefix].create(path.head, path.value.merge(p))
@@ -117,14 +117,14 @@ class HPathSegmentAdder[+H <: HPath, +R <: RelativePathAspect, T](val path:HPath
   
 }
 
-class HParamAdder[+H <: HPath, +R <: RelativePathAspect, P <: CanHavePrefixAspect,T](val path:HPathCons[H,R,CanAddParam,P,T]) extends UnfilteredHPathMatcher[H,R,CanAddParam,P,T] {
+class HParamAdder[+H <: HPath, +R <: RelativePathAspect, A <: NonFragmentPath, P <: CanHavePrefixAspect,T](val path:HPathCons[H,R,A,P,T]) extends UnfilteredHPathMatcher[H,R,A,P,T] {
   
-  protected override def pathToMatch:HPathCons[H,R,CanAddParam,P,T] = path
+  protected override def pathToMatch:HPathCons[H,R,A,P,T] = path
   
-  def addParam(nm:String, value:String) = HPathConsFactory[R,CanAddParam,P].create(path.head, path.value.addParam(QParamSg(nm, value)))
+  def addParam(nm:String, value:String) = HPathConsFactory[R,A,P].create(path.head, path.value.addParam(QParamSg(nm, value)))
   def && (nm:String, value:String) = addParam(nm, value)
   
-  def addParam[T1](pf: ParamSgF[T1]) = HPathConsFactory[R, CanAddParam, P].create(path, pf.pathf)
+  def addParam[T1](pf: ParamSgF[T1]) = HPathConsFactory[R, A, P].create(path, pf.pathf)
   def &&[T1](pf: ParamSgF[T1]) = addParam(pf)
   
   def addFragment(frg:String) = HPathConsFactory[R, CanAddAspect,P].create(path.head, path.value.withFragment(frg))

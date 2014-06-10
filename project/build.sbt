@@ -5,3 +5,5 @@ scalaVersion in Global := "2.10.3"
 parallelExecution in Test := false
 
 //fork in Test := true
+
+resolvers += Resolver.sonatypeRepo("releases")

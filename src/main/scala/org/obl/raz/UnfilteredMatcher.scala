@@ -3,7 +3,7 @@ package org.obl.raz
 import unfiltered.request._
 import unfiltered.request.{ Path => UPath, Params => UParams }
 
-private[raz] object FromUnfiltered {
+object FromUnfiltered {
 
   def toPath[T1](req: HttpRequest[T1]): Option[Path] = {
     req match {
@@ -18,17 +18,27 @@ private[raz] object FromUnfiltered {
     }
   }
 
+  def pathExtract(pathToMatch:Path, req: HttpRequest[_]): Option[Path] = {
+    toPath(req).flatMap { pth =>
+      PathHelper.subtract(pth, pathToMatch)
+    }.flatMap { (rem: Path) =>
+      if (rem.isEmpty) Some(Path(None, rem.path, rem.params, None))
+      else None
+    }
+  }  
+  
 }
 
 trait UnfilteredMatcher { self: Path =>
 
   def unapply[T1](req: HttpRequest[T1]): Option[Path] = {
-    FromUnfiltered.toPath(req).flatMap { pth =>
-      PathHelper.subtract(pth, self)
-    }.flatMap { (rem: Path) =>
-      if (rem.isEmpty) Some(Path(None, rem.path, rem.params, None))
-      else None
-    }
+    FromUnfiltered.pathExtract(self, req)
+//    FromUnfiltered.toPath(req).flatMap { pth =>
+//      PathHelper.subtract(pth, self)
+//    }.flatMap { (rem: Path) =>
+//      if (rem.isEmpty) Some(Path(None, rem.path, rem.params, None))
+//      else None
+//    }
   }
 
   object Partial {
