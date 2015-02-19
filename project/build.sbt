@@ -1,6 +1,6 @@
-sbtVersion in Global := "0.13.0"
+sbtVersion in Global := "0.13.5"
 
-scalaVersion in Global := "2.10.3" 
+scalaVersion in Global := "2.10.4" 
 
 parallelExecution in Test := false
 

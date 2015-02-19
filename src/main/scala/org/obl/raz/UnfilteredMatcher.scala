@@ -11,67 +11,56 @@ object FromUnfiltered {
         val params: Seq[QParamSg] = pars.flatMap { e =>
           e._2.map(v => QParamSg(e._1, Some(v)))
         }.toSeq
-        val psgs = PathSg(elems.map(java.net.URLDecoder.decode))
+        val psgs = PathSg(elems.map(java.net.URLDecoder.decode(_, "UTF-8")))
         Some(Path(None, psgs, params, None))
       }
       case x => None
     }
   }
 
-  def pathExtract(pathToMatch:Path, req: HttpRequest[_]): Option[Path] = {
+  def pathExtract(pathToMatch: Path, req: HttpRequest[_]): Option[Path] = {
     toPath(req).flatMap { pth =>
-      PathHelper.subtract(pth, pathToMatch)
+      PathUtils.subtract(pth, pathToMatch).toOption
     }.flatMap { (rem: Path) =>
       if (rem.isEmpty) Some(Path(None, rem.path, rem.params, None))
       else None
     }
-  }  
-  
+  }
+
 }
 
 trait UnfilteredMatcher { self: Path =>
 
   def unapply[T1](req: HttpRequest[T1]): Option[Path] = {
     FromUnfiltered.pathExtract(self, req)
-//    FromUnfiltered.toPath(req).flatMap { pth =>
-//      PathHelper.subtract(pth, self)
-//    }.flatMap { (rem: Path) =>
-//      if (rem.isEmpty) Some(Path(None, rem.path, rem.params, None))
-//      else None
-//    }
   }
 
   object Partial {
     def unapply[T1](req: HttpRequest[T1]): Option[Path] = {
       FromUnfiltered.toPath(req).flatMap { pth =>
-        PathHelper.subtract(pth, self)
+        PathUtils.subtract(pth, self).toOption
       }
     }
   }
 
 }
 
-trait UnfilteredHPathMatcher[+H <: HPath, +R <: RelativePathAspect, +A <: CanAddAspect, +P <: CanHavePrefixAspect, T] { 
-  //self: HPathCons[H, R, A, P, T] =>
+trait UnfilteredHPathMatcher[+H <: HPath, +R <: RelativePathAspect, A <: CanAddAspect, +P <: CanHavePrefixAspect, TD, TE, UT] {
 
-  protected def pathToMatch:HPathCons[H, R, A, P, T]
-  
-  def unapply[T1, TR](req: HttpRequest[T1])(implicit pm: PathMatcher[HPathCons[H, R, A, P, T], TR]): Option[TR] = {
+  protected def pathToMatch: HPathCons[H, R, A, P, TD, TE, UT]
+
+  def unapply[T1, TR](req: HttpRequest[T1])(implicit pm: PathMatcher[HPathCons[H, R, A, P, TD, TE, UT], TR]): Option[TR] = {
     FromUnfiltered.toPath(req).flatMap { pth =>
-      pm.matcher(pathToMatch)(pth) match {
-        case Some(PathMatchResult(v, rest)) if rest.isEmpty => Some(v)
-        case _ => None
-      }
+      pm.decoder(pathToMatch).decodeFull(pth).toOption
     }
   }
 
   object Partial {
-    def unapply[T1, TR](req: HttpRequest[T1])(implicit pm: PathMatcher[HPathCons[H, R, A, P, T], TR]): Option[TR] = {
+    def unapply[T1, TR](req: HttpRequest[T1])(implicit pm: PathMatcher[HPathCons[H, R, A, P, TD, TE, UT], TR]): Option[TR] = {
       FromUnfiltered.toPath(req).flatMap { pth =>
-        pm.matcher(pathToMatch)(pth) match {
-          case Some(PathMatchResult(v, rest)) => Some(v)
-          case _ => None
-        }
+        pm.decoder(pathToMatch).decode(pth).fold(
+          err => None,
+          v => Some(v.value))
       }
     }
   }

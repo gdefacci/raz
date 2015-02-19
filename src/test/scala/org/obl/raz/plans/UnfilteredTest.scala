@@ -9,6 +9,9 @@ import unfiltered.request.{ Path => UPath }
 import dispatch.classic._
 import org.obl.raz._
 import org.junit.runners.Suite.SuiteClasses
+import org.scalatest.Matchers
+
+import PathConverter._
 
 @RunWith(value=classOf[org.junit.runners.Suite])
 @SuiteClasses(value=Array(
@@ -23,13 +26,13 @@ import org.junit.runners.Suite.SuiteClasses
 class UnfilteredSuite 
 
 @RunWith(classOf[JUnitRunner])
-class UnfilteredTest0 extends FunsuiteServed with ShouldMatchers {
+class UnfilteredTest0 extends FunsuiteServed with Matchers {
 
   val Pth1 = Raz / "a"
   val Pth2 = Raz / "bb" / "cc"
   val Pth3 = Raz && ("a", "bb")
 
-  def setup = _.filter(unfiltered.filter.Planify {
+  def setup = _.plan(unfiltered.filter.Planify {
     case GET(Pth1(_)) => ResponseString("1") ~> Ok
     case GET(Pth2(_)) => ResponseString("2") ~> Ok
     case GET(Pth3(_)) => ResponseString("3") ~> Ok
@@ -54,13 +57,13 @@ class UnfilteredTest0 extends FunsuiteServed with ShouldMatchers {
 }
 
 @RunWith(classOf[JUnitRunner])
-class UnfilteredTest0a extends FunsuiteServed with ShouldMatchers {
+class UnfilteredTest0a extends FunsuiteServed with Matchers {
 
   val Pth1 = Raz / "a"
   val Pth2 = Raz / "bb" / "cc"
   val Pth3 = Raz && ("a", "bb")
 
-  def setup = _.filter(unfiltered.filter.Planify {
+  def setup = _.plan(unfiltered.filter.Planify {
     case GET(Pth1.Partial(_)) => ResponseString("1") ~> Ok
     case GET(Pth2.Partial(_)) => ResponseString("2") ~> Ok
     case GET(Pth3.Partial(_)) => ResponseString("3") ~> Ok
@@ -79,11 +82,11 @@ class UnfilteredTest0a extends FunsuiteServed with ShouldMatchers {
 }
 
 @RunWith(classOf[JUnitRunner])
-class UnfilteredTest extends FunsuiteServed with ShouldMatchers {
+class UnfilteredTest extends FunsuiteServed with Matchers {
 
-  val Pth1 = Raz / pathVar[String]
+  val Pth1 = Raz / Segment.string
 
-  def setup = _.filter(unfiltered.filter.Planify {
+  def setup = _.plan(unfiltered.filter.Planify {
     case GET(Pth1("aaa")) => ResponseString("aaa") ~> Ok
     case GET(Pth1(v)) => ResponseString(s"test:$v") ~> Ok
   })
@@ -98,12 +101,12 @@ class UnfilteredTest extends FunsuiteServed with ShouldMatchers {
 }
 
 @RunWith(classOf[JUnitRunner])
-class UnfilteredTest1 extends FunsuiteServed with ShouldMatchers {
+class UnfilteredTest1 extends FunsuiteServed with Matchers {
 
-  val Pth1 = Raz / pathVar[String]
-  val Pth2 = Pth1 / "abba" / pathVar[String]
+  val Pth1 = Raz / Segment.string
+  val Pth2 = Pth1 / "abba" / Segment.string
 
-  def setup = _.filter(unfiltered.filter.Planify {
+  def setup = _.plan(unfiltered.filter.Planify {
     case GET(Pth1.Partial(v)) => ResponseString(s"partial:$v") ~> Ok
   })
 
@@ -115,11 +118,11 @@ class UnfilteredTest1 extends FunsuiteServed with ShouldMatchers {
 }
 
 @RunWith(classOf[JUnitRunner])
-class UnfilteredTest2a extends FunsuiteServed with ShouldMatchers {
+class UnfilteredTest2a extends FunsuiteServed with Matchers {
 
-  val Pth2 = Raz / pathVar[String] / "abba" / pathVar[String]
+  val Pth2 = Raz / Segment.string / "abba" / Segment.string
 
-  def setup = _.filter(unfiltered.filter.Planify {
+  def setup = _.plan(unfiltered.filter.Planify {
     case GET(Pth2((a, b))) => ResponseString(s"test:$a:$b") ~> Ok
   })
 
@@ -132,11 +135,11 @@ class UnfilteredTest2a extends FunsuiteServed with ShouldMatchers {
 }
 
 @RunWith(classOf[JUnitRunner])
-class UnfilteredTest2 extends FunsuiteServed with ShouldMatchers {
+class UnfilteredTest2 extends FunsuiteServed with Matchers {
 
-  val Pth2 = Raz / pathVar[String] / "abba" / pathVar[String]
+  val Pth2 = Raz / Segment.string / "abba" / Segment.string
 
-  def setup = _.filter(unfiltered.filter.Planify {
+  def setup = _.plan(unfiltered.filter.Planify {
     case GET(Pth2.Partial((a, b))) => ResponseString(s"partial:$a:$b") ~> Ok
   })
 
@@ -149,11 +152,11 @@ class UnfilteredTest2 extends FunsuiteServed with ShouldMatchers {
 }
 
 @RunWith(classOf[JUnitRunner])
-class UnfilteredTest3a extends FunsuiteServed with ShouldMatchers {
+class UnfilteredTest3a extends FunsuiteServed with Matchers {
 
-  val Pth2 = Raz / pathVar[String] / "abba" && paramValueVar[String]("bb")
+  val Pth2 = Raz / Segment.string / "abba" && Param.string("bb")
 
-  def setup = _.filter(unfiltered.filter.Planify {
+  def setup = _.plan(unfiltered.filter.Planify {
     case GET(Pth2((a, b))) => ResponseString(s"test:$a:$b") ~> Ok
   })
 
@@ -171,14 +174,11 @@ class UnfilteredTest3a extends FunsuiteServed with ShouldMatchers {
 }
 
 @RunWith(classOf[JUnitRunner])
-class UnfilteredTest3b extends FunsuiteServed with ShouldMatchers {
+class UnfilteredTest3b extends FunsuiteServed with Matchers {
 
-  
-  System.setProperty("http.proxyPort", "")
+  val Pth2 = Raz / Segment.string / "abba" && Param.string("bb")
 
-  val Pth2 = Raz / pathVar[String] / "abba" && paramValueVar[String]("bb")
-
-  def setup = _.filter(unfiltered.filter.Planify {
+  def setup = _.plan(unfiltered.filter.Planify {
     case GET(Pth2.Partial((a, b))) => ResponseString(s"test:$a:$b") ~> Ok
   })
 

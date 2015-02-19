@@ -1,6 +1,8 @@
 package org.obl.raz
 
 object UnfilteredMain {
+  
+  import PathConverter._
 
    def testUnfiltered = {
       import unfiltered.filter._
@@ -11,7 +13,7 @@ object UnfilteredMain {
       import unfiltered.filter.Intent
   
       val Pth = Raz / ""
-      val Pth1 = Raz / "p1" / pathVar[String] / pathVar[Int]
+      val Pth1 = Raz / "p1" / Segment.string / Segment.int
   
       Intent {
         case GET(Pth(x)) => Ok

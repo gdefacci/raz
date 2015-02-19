@@ -3,7 +3,7 @@ package org.obl.raz
 object Sample {
 
   def main(args:Array[String]):Unit =  {
-    matcherSample
+//    matcherSample
     appendSample
     utTest
     parSeqTest
@@ -11,37 +11,34 @@ object Sample {
     noneTest 
     test_#
     
-//    test1_# 
+    test1_# 
   }
   
   def typeOf[T](t:T)(implicit ct:Manifest[T]) = ct
 
+  import PathConverter._
+  
   def appendSample = {
-     Raz.add("a").append(Raz.add("b").add(pathVar[Int]).addParam("a", "a"))
-     Raz.add("a").append(Raz.add("b").add(pathVar[Int]))
-     Raz.add("a").append(Raz.add("b").add(pathVar[Int]).addParam(paramValueVar[Int]("ccc")))
+     Raz.add("a").append(Raz.add("b").add(Segment.int).addParam("a", "a"))
+     Raz.add("a").append(Raz.add("b").add(Segment.int))
+     Raz.add("a").append(Raz.add("b").add(Segment.int).addParam(Param.int("ccc")))
 
     val u2 = Raz.add("a").add("b")
     
-    val u3 = Raz / "a" / pathVar[String] / "b" / pathVar[Int] && ("a", "b") && paramValueVar[String]("aaa")
-    val u4 = Raz && paramValueVar[String]("hhaaa")
+    val u3 = Raz / "a" / Segment.string / "b" / Segment.int && ("a", "b") && Param.string("aaa")
+    val u4 = Raz && Param.string("hhaaa")
     
     val u3a = u2.append(u3)
-//    val u3af = u3a.toF
-//    val u3am = u3a.matcher
     
-    u3a.matchPath( u3a("bb", 1 , "2") ) match {
-       case Some(PathMatchResult(("bb", 1 , "2"), pth)) if pth.isEmpty => ()
+    u3a.decodeFull( u3a("bb", 1 , "2") ).toOption match {
+       case Some(("bb", 1 , "2")) => ()
        case x => throw new Exception(x.toString)
      }
     
    
-//     u3 concat u4
-//     
     val u3b = u2.append(u3).concat(u4)
-//    
-    val u21 = Raz.add("a").addParam(paramValueVar[String]("aaa"))
-    val u41 = Raz.addParam("yyyyera", "yeahhh").addParam(paramValueVar[String]("hhaaa")).addParam(paramValueVar[String]("hhaaaa")).addParam("YY", "XX").addParam(paramValueVar[String]("ccc"))
+    val u21 = Raz.add("a").addParam(Param.string("aaa"))
+    val u41 = Raz.addParam("yyyyera", "yeahhh").addParam(Param.string("hhaaa")).addParam(Param.string("hhaaaa")).addParam("YY", "XX").addParam(Param.string("ccc"))
     
     val ur = u21.concat(u41)
     
@@ -49,7 +46,7 @@ object Sample {
   }
   
   def htfSample = {
-    val f1 = Raz.add("a").add("b").add(pathVar[Int]).addParam(paramValueVar[Int]("ccc"))
+    val f1 = Raz.add("a").add("b").add(Segment.int).addParam(Param.int("ccc"))
 
     println(f1(1, 2))
   }
@@ -57,120 +54,66 @@ object Sample {
 
   case class Cl1(a:Int,b:Int)
   
-//  def implicitly[T](implicit t:T):T = t
+//  def matcherSample = {
+//    val u = Raz.add("a").add("b").add(Segment.int).addParam(Param.int("ccc"))
+//    
+//    u(22, 33)
+//    
+//    val sc1 = Converter.tryConverter(Cl1.tupled, Cl1.unapply)
+//
+//    val r = u.mapTo(sc1)
+//
+//    val f2 = r
+//    
+//    println(f2(Cl1(22,44)).render)
+//    println(r)
+////    u.hello
+//    
+//    
+//    
+//    println(u(1, 2))
+//    println(u.matchPath(u(1, 2)))
+//  }
   
-  def matcherSample = {
-    val u = Raz.add("a").add("b").add(pathVar[Int]).addParam(paramValueVar[Int]("ccc"))
-//    val u = Raz.param(paramValueVar[Int]("bb")).param(paramValueVar[Int]("ccc"))
-//    val f1:(Int,Int) => Path = u.toF(HF.fromHFAux(HFAux.hfaux2[Int,Int]))
-    
-    u(22, 33)
-//    val m1 = u.matcher
-    
-    val sc1 = Converter(Cl1.tupled, Cl1.unapply)
-
-    val r = u.mapTo(sc1)
-
-    val f2 = r
-    
-    println(f2(Cl1(22,44)).render)
-    println(r)
-//    u.hello
-    
-    
-    
-    println(u(1, 2))
-    println(u.matchPath(u(1, 2)))
-  }
-  
-////  def matcherSample1 = {
-////    val u = Raz.param(paramValueVar[Int]("bee")).param(paramValueVar[Int]("ccc"))
-//////    val u = Raz.param(paramValueVar[Int]("bb")).param(paramValueVar[Int]("ccc"))
-//////    val f1:(Int,Int) => Path = u.toF(HF.fromHFAux(HFAux.hfaux2[Int,Int]))
-////    val f1:(Int,Int) => Path = u.toF
-//// 
-////    val U1 = u
-////    
-////    u(21,22) match {
-////      case U1.Matcher.Match((21, 22))  => ()
-////      case _ => throw new Exception("")
-////    }
-////    
-////    u(21,22) match {
-////      case U1.Match((21, 22))  => ()
-////      case _ => throw new Exception("")
-////    }
-////    
-////    f1(22, 33)
-////    val m1 = u.matcher
-////    
-////    val sc1 = Converter(Cl1.tupled, Cl1.unapply)
-////
-////    val r = u.mapper.mapTo(sc1)
-////
-////    val f2 = r.toF
-////    
-////    println(f2(Cl1(22,44)).render)
-////    println(r)
-//////    u.hello
-////    
-////    
-////    
-////    println(f1(1, 2))
-////    println(m1(f1(1, 2)))
-////  }
-
 
 
   def utTest = {
-    val u = Raz.add("a").add("b").add(pathVar[Int]).addParam(paramValueVar[Int]("ccc"))
+    val u = Raz.add("a").add("b").add(Segment.int).addParam(Param.int("ccc"))
 
     u(1,1)
-//    val ut = u.toUriTemplate("par1","par2")
     
-    println( u.toUriTemplate("param1", "param2") )
+    println( u.toUriTemplate("param1", "param2").render )
     
   }
 //  
-//  def angularUtTest = {
-//    val u = Raz.path("a").path("b").path(pathVar[Int]).param(paramValueVar[Int]("ccc")).param("par1", "2").param(paramValueVar[Int]("ddr"))
-//
-//    val ut = u.toUriTemplate
-//    
-//    println( ut("param1", "param2", "param3").render )
-//    println( ut.matchPath(ut("p1", "p2", "p3")) )
-//    
-//  }
-//  
   def parSeqTest = {
     
-    val u = Raz.add("a").add("b").add(pathVar[Int]).addParam(paramSeqVar[Int]("ccc"))
-    val u1 = Raz.add("a").add("b").add(pathVar[Int]).addParam("a", "bba").addParam(paramSeqVar[Int]("ccc"))
+    val u = Raz.add("a").add("b").add(Segment.int).addParam(PathConverter.seq(Param.int("ccc")))
+    val u1 = Raz.add("a").add("b").add(Segment.int).addParam("a", "bba").addParam(PathConverter.seq(Param.int("ccc")))
     
     println( u(11, Seq(7,9,16)).render )
-    println( u.matchPath(u(11, Seq(7,9,16))) )
+    println( u.decodeFull(u(11, Seq(7,9,16))) )
     
-    println( u.toUriTemplate("intPar", "intSeq"))
+    println( u.toUriTemplate("intPar", "intSeq").render)
   }
   
 //  
    def optTest = {
     
-    val u = Raz.add("a").add("b").add(pathVar[String]).addParam(optParamVar[Int]("opt"))
+    val u = Raz.add("a").add("b").add(Segment.string).addParam(PathConverter.opt(Param.int("opt")))
     
     val u1 = u("bbbb", Some(3))
     println( u("bbb", Some(3)).render )
-//    println( u.matchPath(u1) )
     
-    assert(u.matchPath(u1).get.value == ("bbbb" -> Some(3)))
+    assert(u.decodeFull(u1).toOption.get == ("bbbb" -> Some(3)))
   }
    
    def noneTest = {
 
-    val u = Raz.add("a").add("b").add(pathVar[String]).addParam(optParamVar[Int]("opt"))
+    val u = Raz.add("a").add("b").add(Segment.string).addParam(PathConverter.opt(Param.int("opt")))
     val u1 = u("bbbb", None)
  
-    assert(u.matchPath(u1).get.value == ("bbbb" -> None))
+    assert(u.decodeFull(u1).toOption.get == ("bbbb" -> None))
     
     
   }
@@ -184,31 +127,55 @@ object Sample {
      assert("/a#myfragment" == hp1.render)
      assert("/a?par=1#myfragment" == hp2.render)
      
-     val u = Raz.add("a").add("b").add(pathVar[Int]).addParam(paramValueVar[Int]("ccc")).addFragment("myfrag")
+     val u = Raz.add("a").add("b").add(Segment.int).addParam(Param.int("ccc")).addFragment("myfrag")
      
      val hp3 = u.apply(1,2)
      
      assert("/a/b/1?ccc=2#myfrag" == hp3.render)
  
-     val up1 = Raz.add("a").add("b").add(pathVar[Int]).add(pathVar[Int]).addFragment("f")
-     val utp1 = Raz.add("a").add("b").add(pathVar[Int]).add(pathVar[Int]).addFragment("f").toUriTemplate("a","b")
+     val up1 = Raz.add("a").add("b").add(Segment.int).add(Segment.int).addFragment("f")
+     val utp1 = Raz.add("a").add("b").add(Segment.int).add(Segment.int).addFragment("f").toUriTemplate("a","b")
      
      println(up1(11,22).render)
-     println(utp1)
-     assert("/a/b/{a}/{b}#f" == utp1)
+     println(utp1.render)
+     assert("/a/b{/a}{/b}#f" == utp1.render)
      
-     val utp2 = u.toUriTemplate("sym1", "sym2")
+     val utp2 = u.toUriTemplate("sym1", "sym2").render
      
-     assert("/a/b/{sym1}?ccc={sym2}#myfrag" == utp2)
+     println(utp2)
+     
+     assert("/a/b{/sym1}?ccc={sym2}#myfrag" == utp2)
    }
  
    def test1_# = {
      
 
-     val utp1 = Raz.add("a").add("b").add(pathVar[Int]).add(pathVar[Int]).addFragment("f").toUriTemplate("a","b")
+     val utp1 = Raz.add("a").add("b").add(Segment.int).add(Segment.int).addFragment("f").toUriTemplate("a","b").render
      
      println(utp1)
-     assert("/a/b/{a}/{b}#f" == utp1)
+     assert("/a/b{/a}{/b}#f" == utp1)
      
    }
+   
+   case class Cl2(a:Int, b:String, c:Boolean)
+   
+  def testRootPath = {
+    val u1 = Raz / "a" / Segment.int / "b" / Segment.string / Segment.boolean
+    val up1 = Raz / "bbb" && ("a", "bb") && Param.int("par1") && ("b", "bbb") && Param.string("par2") && Param.boolean("par3")
+    
+    println(u1(10, "abba", true))
+    println(u1(10, "abba", true).render)
+    println(u1.decodeFull( u1(10, "abba", true) ))
+    
+//    var sc = Converter.tryConverter(Cl1.tupled, Cl1.unapply)
+    
+    val u2 = u1.caseMap(Cl2.tupled, Cl2.unapply) 
+    val up2 = up1.caseMap(Cl2.tupled, Cl2.unapply) 
+
+    Raz / up2
+//    check(u1, (10, "abba", true))
+//    check(Raz / u2, Cl1(10, "abba", true))
+    
+  }
+
 }

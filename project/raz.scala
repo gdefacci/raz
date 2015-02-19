@@ -4,19 +4,21 @@ import Keys._
 object RazBuild  extends Build {
   
   val buildOrganization = "org.obl"
-  val buildVersion      = "0.5-SNAPSHOT"
-  val buildScalaVersion = "2.10.4"
+  val buildVersion      = "0.6-SNAPSHOT"
+  val buildScalaVersion = "2.11.4"
 
   val buildSettings = Defaults.defaultSettings ++ Seq (
     organization 			:= buildOrganization,
     version      			:= buildVersion,
-    scalaVersion 			:= buildScalaVersion
-    //, crossScalaVersions := Seq("2.10.4", "2.11.0") // disabled since unfiltered-scalatest is not avaible for 2.11.0
+    scalaVersion 			:= buildScalaVersion,
+    crossScalaVersions := Seq(/* "2.10.4", does not compile */ "2.11.4") 
   )
 
   val servletDep = "javax.servlet" % "servlet-api" % "2.5" 
 
-  val unfilteredVersion = "0.7.1"
+  val scalazCore =  "org.scalaz" %% "scalaz-core" % "7.0.6"
+  
+  val unfilteredVersion = "0.8.2"
   val unfilteredCore = "net.databinder" %% "unfiltered" % unfilteredVersion
   val unfilteredFilter = "net.databinder" %% "unfiltered-filter" % unfilteredVersion
   
@@ -29,7 +31,7 @@ object RazBuild  extends Build {
   
   val testDeps = Seq(
 	"junit" % "junit" % "4.10" % "test",
-	"com.novocode" % "junit-interface" % "0.10" % "test"
+	"com.novocode" % "junit-interface" % "0.11" % "test"
   )
   
   lazy val raz = Project (
@@ -37,6 +39,7 @@ object RazBuild  extends Build {
     file ("."),
     settings = buildSettings ++ Seq(
         libraryDependencies += unfilteredCore,
+        libraryDependencies += scalazCore,
         libraryDependencies ++= testDeps,
         libraryDependencies ++= unfilteredTest
     )

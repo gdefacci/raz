@@ -8,7 +8,7 @@ trait PathRenderer { self: Path =>
       else {
         "?" + (params.map { p =>
           val (name, value) = (p.name -> p.value)
-          val escpr = java.net.URLEncoder.encode(_:String)
+          val escpr = java.net.URLEncoder.encode(_:String, "UTF-8")
           value match {
             case None => escpr(name)
             case Some(v) => escpr(name) + "=" + escpr(v)
@@ -17,19 +17,17 @@ trait PathRenderer { self: Path =>
       }
     }
 
-    val sb = new StringBuilder
-    base.foreach { bs =>
-      if (bs.endsWith("/")) sb.append(sb.substring(0, bs.length - 1))
-      else sb.append(bs)
-    }
+    val sb = new StringBuilder()
+    base.foreach(b => sb.append(b.render))
 
     if (!path.isEmpty) {
       sb.append("/")
       sb.append(path.path.map(UriPartEncode.encode(UriPartEncode.pathUnescaped)).mkString("/"))
-      sb.append(pars)
-    } else {
-      sb.append(pars)
+    } else if (params.nonEmpty || fragment.nonEmpty) {
+      sb.append("/")
     }
+    
+    sb.append(pars)
 
     fragment.foreach { frg =>
       sb.append("#" + frg)
@@ -38,40 +36,4 @@ trait PathRenderer { self: Path =>
     sb.toString
   }
   
-  private[raz] def renderUriTemplate: String = {
-    val pars = {
-      if (params.isEmpty) ""
-      else {
-        val r = (params.map { p =>
-          val (name, value) = (p.name -> p.value)
-          val escpr = UriPartEncode.encode(UriPartEncode.paramUriTemplateUnescaped)(_:String)
-          value match {
-            case None => escpr(name)
-            case Some(v) => escpr(name) + "=" + escpr(v)
-          }
-        }.mkString("&"))
-        if (r.startsWith("{")) r else "?"+r
-      }
-    }
-
-    val sb = new StringBuilder
-    base.foreach { bs =>
-      if (bs.endsWith("/")) sb.append(sb.substring(0, bs.length - 1))
-      else sb.append(bs)
-    }
-
-    if (!path.isEmpty) {
-      sb.append("/")
-      sb.append(path.path.map(UriPartEncode.encode(UriPartEncode.pathUriTemplateUnescaped)).mkString("/"))
-      sb.append(pars)
-    } else {
-      sb.append(pars)
-    }
-
-    fragment.foreach { frg =>
-      sb.append("#" + frg)
-    }
-
-    sb.toString
-  }
 }

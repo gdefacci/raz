@@ -13,8 +13,9 @@ trait FunsuiteServed extends FunSuite with Hosted {
   import unfiltered.jetty._
   def setup: (Server => Server)
 
-  override protected def withFixture(test: NoArgTest) {
-    lazy val server = setup(Http(port))
+  override protected def withFixture(test: NoArgTest) = {
+    lazy val hs:unfiltered.jetty.Server = unfiltered.jetty.Server.http(port)
+    lazy val server = setup(hs)
     server.start();
     try {
       test() // Invoke the test function
