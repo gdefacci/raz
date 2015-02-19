@@ -9,43 +9,26 @@ object Sample {
   import org.obl.raz.Raz._
   import PathConverter._
 
-//  def main_1(args: Array[String]): Unit = {
-//    val city = Raz / "countries" / pathVar[String]
-//    
-//    val sfx = Raz / "cities" && paramValueVar[Int]("p1")
-//    
-//    val sum = city concat sfx
-//    
-//    println(sum("a", 12).render)
-//
-//    val sfx1 = Raz / "cities" && ("p2", "3")
-//    
-//    val sum1 = city append sfx1
-//    
-//    println(sum1("a").render)
-//    
-//  }
-  
   def main(args: Array[String]): Unit = {
 
     val state = Raz / "countries" / Segment.string / "states" / Segment.string 
 
     assert("/countries/it/states/mi" == state("it", "mi").render)
 
-    assert("/countries{/country}/states{/state}" == state.toUriTemplate("country", "state").render)
+    assert("/countries/{country}/states/{state}" == state.toUriTemplate("country", "state").render)
     
     val street = Raz / "cities" / Segment.int && Param.string("street") && Param.string("number")
     
     assert("/cities/123?street=Baker+street&number=12a" == street(123, "Baker street", "12a").render)
     println(street.toUriTemplate("city-id", "street", "number").render)
-    assert("/cities{/city-id}?street={street}&number={number}" == street.toUriTemplate("city-id", "street", "number").render )
+    assert("/cities/{city-id}?street={street}&number={number}" == street.toUriTemplate("city-id", "street", "number").render )
 
     /**
      * Absolute url
      */
     
     assert("http://mypage.com/countries/it/states/mi" == state.at(HTTP("mypage.com")).apply("it", "mi").render)
-    assert("http://mypage.com/countries{/country}/states{/state}" == state.at(HTTP("mypage.com")).toUriTemplate("country", "state").render)
+    assert("http://mypage.com/countries/{country}/states/{state}" == state.at(HTTP("mypage.com")).toUriTemplate("country", "state").render)
     
     /**
      * Concatenation
@@ -55,7 +38,7 @@ object Sample {
 
     assert("/countries/it/states/mi/cities/123?street=Baker+street&number=12a" == fullAdrs("it", "mi", 123, "Baker street", "12a").render)
 
-    assert("/countries{/country}/states{/state}/cities{/city-id}?street={street}&number={street-number}" == fullAdrs.toUriTemplate("country", "state", "city-id", "street", "street-number").render)
+    assert("/countries/{country}/states/{state}/cities/{city-id}?street={street}&number={street-number}" == fullAdrs.toUriTemplate("country", "state", "city-id", "street", "street-number").render)
 
     /**
      * Mapping
