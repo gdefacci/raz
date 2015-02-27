@@ -12,10 +12,17 @@ case object HTTPS extends Protocol {
   val render = "https"
 }
 
+object PathBase {
+  
+  implicit def toPathSegmentAdder(path:PathBase)  = 
+    new PathSegmentAdder[IsAbsolutePath](BasePath[IsAbsolutePath, CanAddPath, CanHavePathAsPrefix](Some(path), PathSg.empty, Nil, None))
+  
+}
+
 case class PathBase(protocol:Protocol, host:String, port:Int) {
   def render = {
     val prfx = s"${protocol.render}://$host"
-    if (port == 80) prfx
+    if (port < 0 || port == 80) prfx
     else s"$prfx:$port"
   }
 }
