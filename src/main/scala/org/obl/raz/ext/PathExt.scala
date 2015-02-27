@@ -7,8 +7,17 @@ import scalaz.{-\/, \/, \/-}
 class PathExtApply[D,E](pathConverter:PathConverter[D,E,_,_,_]) {
   
   def apply(t:E):Path = pathConverter.encode(t)
+  
   def unapply[REQ](req: HttpRequest[REQ]): Option[D] = {
-    FromUnfiltered.toPath(req).flatMap( p => pathConverter.decodeFull(p).toOption )
+    /**
+//     * FIXME code duplicated from UnfilteredHPathMatcher.unapply
+     */
+    FromUnfiltered.toPath(req).flatMap { pth =>
+      pathConverter.decode(pth.copy(base=None)) match {
+        case \/-(PathMatchResult(v, Path(_, segments, params, _))) if segments.isEmpty && params.isEmpty => Some(v)  
+        case _ => None
+      }
+    }
   }
   
   def decodeFull(path:Path):Throwable \/ D = pathConverter.decodeFull(path)

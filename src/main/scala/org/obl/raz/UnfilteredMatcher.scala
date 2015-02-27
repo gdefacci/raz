@@ -1,5 +1,6 @@
 package org.obl.raz
 
+import scalaz.{-\/, \/, \/-}
 import unfiltered.request._
 import unfiltered.request.{ Path => UPath, Params => UParams }
 
@@ -22,7 +23,7 @@ object FromUnfiltered {
     toPath(req).flatMap { pth =>
       PathUtils.subtract(pth, pathToMatch).toOption
     }.flatMap { (rem: Path) =>
-      if (rem.isEmpty) Some(Path(None, rem.path, rem.params, None))
+      if (rem.path.isEmpty && rem.params.isEmpty) Some(Path(None, rem.path, rem.params, None))
       else None
     }
   }
@@ -51,7 +52,10 @@ trait UnfilteredHPathMatcher[+H <: HPath, +R <: RelativePathAspect, A <: CanAddA
 
   def unapply[T1, TR](req: HttpRequest[T1])(implicit pm: PathMatcher[HPathCons[H, R, A, P, TD, TE, UT], TR]): Option[TR] = {
     FromUnfiltered.toPath(req).flatMap { pth =>
-      pm.decoder(pathToMatch).decodeFull(pth).toOption
+      pm.decoder(pathToMatch).decode(pth) match {
+        case \/-(PathMatchResult(v, Path(_, segments, params, _))) if segments.isEmpty && params.isEmpty => Some(v)  
+        case _ => None
+      }
     }
   }
 

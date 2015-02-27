@@ -61,7 +61,7 @@ object PathDecoder {
     }
   
   def fromPath(p:Path):PathDecoder[Path] = apply[Path] { p1:Path =>
-    if (p == p1) \/-(PathMatchResult(p1, Path.empty))
+    if (p.copy(base = None) == p1.copy(base = None)) \/-(PathMatchResult(p1, Path.empty))
     else -\/(new exceptions.PathExpectationException(p, p1))
   }
   

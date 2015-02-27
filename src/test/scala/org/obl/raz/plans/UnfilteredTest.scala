@@ -48,9 +48,7 @@ class UnfilteredTest0 extends FunsuiteServed with Matchers {
     http(host / "bb" / "cc" as_str) should be("2")
 
     assertCode(404)(http(host / "a" / "extra" as_str))
-    println("1")
     
-    println("2")
     assertCode(404)(http(host <<? Map("a" -> "bb", "extra" -> "v") as_str))
   }
 
