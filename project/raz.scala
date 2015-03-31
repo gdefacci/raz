@@ -4,7 +4,7 @@ import Keys._
 object RazBuild  extends Build {
   
   val buildOrganization = "org.obl"
-  val buildVersion      = "0.6.0"
+  val buildVersion      = "0.7-SNAPSHOT"
   val buildScalaVersion = "2.11.4"
 
   val buildSettings = Defaults.defaultSettings ++ Seq (
