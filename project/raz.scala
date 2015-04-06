@@ -5,13 +5,13 @@ object RazBuild  extends Build {
   
   val buildOrganization = "org.obl"
   val buildVersion      = "0.7-SNAPSHOT"
-  val buildScalaVersion = "2.11.4"
+  val buildScalaVersion = "2.11.6"
 
   val buildSettings = Defaults.defaultSettings ++ Seq (
     organization 			:= buildOrganization,
     version      			:= buildVersion,
     scalaVersion 			:= buildScalaVersion,
-    crossScalaVersions := Seq(/* "2.10.4", does not compile */ "2.11.4") 
+    crossScalaVersions := Seq(buildScalaVersion) 
   )
 
   val servletDep = "javax.servlet" % "servlet-api" % "2.5" 
@@ -30,19 +30,33 @@ object RazBuild  extends Build {
   )
   
   val testDeps = Seq(
-	"junit" % "junit" % "4.10" % "test",
-	"com.novocode" % "junit-interface" % "0.11" % "test"
+    "junit" % "junit" % "4.10" % "test",
+    "com.novocode" % "junit-interface" % "0.11" % "test"
   )
-  
+
   lazy val raz = Project (
     "raz",
-    file ("."),
+    file("raz"),
+    settings = buildSettings ++ Seq(
+        libraryDependencies += scalazCore,
+        libraryDependencies ++= testDeps
+    )
+  )
+  
+  lazy val razUnfiltered = Project (
+    "raz-unfiltered",
+    file ("raz-unfiltered"),
     settings = buildSettings ++ Seq(
         libraryDependencies += unfilteredCore,
-        libraryDependencies += scalazCore,
         libraryDependencies ++= testDeps,
         libraryDependencies ++= unfilteredTest
     )
-  ) 
+  ) dependsOn raz
+  
+  lazy val root= Project(
+    "root",  
+    base = file("."),
+    settings = buildSettings 
+  ) aggregate(raz, razUnfiltered)
 
 }
