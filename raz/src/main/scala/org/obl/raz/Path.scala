@@ -62,7 +62,9 @@ sealed abstract class SegmentPosition extends BasePosition
 sealed abstract class ParamPosition extends SegmentPosition 
 sealed abstract class FragmentPosition extends ParamPosition 
 
-sealed abstract class BasePath[P <: PathPosition,S <: P](private [raz] val pathBase:Option[PathBase], val path:PathSg, val params:Seq[QParamSg], val fragment:Option[String]) extends Path 
+sealed abstract class BasePath[P <: PathPosition,S <: P](private [raz] val pathBase:Option[PathBase], val path:PathSg, val params:Seq[QParamSg], val fragment:Option[String]) extends Path {
+  def at[R](base:PathBase)(implicit atAux:AtAux[BasePath[P,S], R]):R = atAux.apply(this)(base)
+} 
 
 class RelativePath[P <: SegmentPosition,S <: P] private [raz] (path:PathSg, params:Seq[QParamSg], fragment:Option[String]) extends BasePath[P,S](None, path, params, fragment) {
   
