@@ -40,17 +40,8 @@ object Path  {
      }
     }
    
-  private [raz] def copy(p:Path)(path:PathSg = p.path, params:Seq[QParamSg] = p.params):Path =
-    baseOf(p) match {
-      case Some(b) => p.fragment match { 
-        case None => AbsolutePath(b, path, params)
-        case Some(f) => AbsolutePath(b, path, params, f)
-      }
-      case None => p.fragment match {
-        case None => RelativePath(path, params)
-        case Some(f) => RelativePath(path, params, f)
-      }
-    }
+  def copy(p:Path)(path:PathSg = p.path, params:Seq[QParamSg] = p.params, fragment:Option[String] = p.fragment):Path =
+    BasePath(baseOf(p), path, params, fragment)
 
   def apply(pathBase:Option[PathBase], path:PathSg, params:Seq[QParamSg], fragment:Option[String]):Path =
     BasePath(pathBase, path, params, fragment)
