@@ -52,6 +52,8 @@ object Path  {
       }
     }
 
+  def apply(pathBase:Option[PathBase], path:PathSg, params:Seq[QParamSg], fragment:Option[String]):Path =
+    BasePath(pathBase, path, params, fragment)
 }
 
 sealed trait PathPosition
