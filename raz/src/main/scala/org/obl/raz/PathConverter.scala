@@ -4,7 +4,7 @@ import scalaz.{ -\/, \/, \/- }
 
 import scala.language.implicitConversions
 
-class PathConverter[D, E, UT, P <: PathPosition, S <: PathPosition](d: Path => Throwable \/ PathMatchResult[D, Path], e: E => Path, ute: UT => UriTemplate) extends PathDecoder[D] with PathEncoder[E] with UriTemplateEncoder[UT] {
+class PathConverter[D, E, UT, P <: PathPosition, S <: PathPosition] private (d: Path => Throwable \/ PathMatchResult[D, Path], e: E => Path, ute: UT => UriTemplate) extends PathDecoder[D] with PathEncoder[E] with UriTemplateEncoder[UT] {
   def decode(path: Path) = d(path)
   def encode(t: E): Path = e(t)
   def toUriTemplate(t: UT) = ute(t)
@@ -28,17 +28,6 @@ class PathConverter[D, E, UT, P <: PathPosition, S <: PathPosition](d: Path => T
     new PathConverter(d.andThen(_.flatMap( p => \/.fromTryCatch(p.mapValue(tupled) ))), e.compose((t1: T1) => caseUnapply(t1).get), ute)
   }
 
-  def unapply[U](p:U)(implicit extPathDecode:ext.ExtPathDecode[U]):Option[D] = {
-    this.decodeFull(extPathDecode(p)).toOption
-  }
-  
-  object Partial {
-    def unapply[U](p:U)(implicit extPathDecode:ext.ExtPathDecode[U]):Option[D] = {
-      val pth = extPathDecode(p)
-      val dv = PathConverter.this.decode(pth)
-      dv.map(_.value).toOption
-    }  
-  }
 }
 
 object PathConverter {

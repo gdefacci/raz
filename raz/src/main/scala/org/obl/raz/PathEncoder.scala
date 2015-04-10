@@ -3,6 +3,7 @@ package org.obl.raz
 import scalaz.{-\/, \/, \/-}
 import exceptions._
 
+import scala.language.implicitConversions
 import scala.language.higherKinds 
 
 trait PathEncoder[T] extends (T => Path){
@@ -77,5 +78,11 @@ object PathEncoder {
   def enumValueParamValue[V <: Enumeration#Value](nm:String) = toStringParam[V](nm:String)
 
   lazy val stringFragment = PathEncoder[String](sg => RelativePath(fragment = sg))
+  
+ implicit def apply[H <: HPath, P <: PathPosition, S <: P, E](h: H)(implicit hf: EncHPathF[H, E, BasePath[P, S]]): PathEncoder[E] = {
+    val e = hf.apply(h)
+    PathEncoder(e)
+  }
+
   
 }

@@ -4,6 +4,7 @@ import scalaz.{-\/, \/, \/-}
 import exceptions._
 
 import scala.language.higherKinds 
+import scala.language.implicitConversions 
 
 trait PathDecoder[T] {
   import PathDecoder.{Result}
@@ -49,6 +50,12 @@ trait PathDecoder[T] {
     }
   }
   
+  def unapply[U](p:U)(implicit extPathDecode:ext.ExtPathDecode[U]):Option[T] = {
+    this.decodeFull(extPathDecode(p)).toOption
+  }
+  
+  lazy val Partial = PathDecoder.partialUnapply(decode(_))
+  
 }
 
 object PathDecoder {
@@ -60,6 +67,16 @@ object PathDecoder {
         type Decoder[T] = PathDecoder[T]
         def decode(path:Path):Result[T] = f(path) 
         def createDecoder[T1](f:Path => Result[T1]):Decoder[T1] = PathDecoder.apply(f)
+    }
+  
+  private def partialUnapply[T](f:Path=> Result[T]):PathDecoder[T] =
+    new PathDecoder[T] {
+        type Decoder[T] = PathDecoder[T]
+        def decode(path:Path):Result[T] = f(path) 
+        def createDecoder[T1](f:Path => Result[T1]):Decoder[T1] = PathDecoder.apply(f)
+        override def unapply[U](p:U)(implicit extPathDecode:ext.ExtPathDecode[U]):Option[T] = {
+          f(extPathDecode(p)).map(_.value).toOption
+        }
     }
   
   def fromPath(p:Path):PathDecoder[Path] = apply[Path] { p1:Path =>
@@ -190,4 +207,8 @@ object PathDecoder {
   lazy val booleanParamValue = named(_:String, _.toBoolean)
   
   def enumParamValue[E <: Enumeration](e:E):String => PathDecoder[E#Value] = named(_:String, e.withName(_))
+  
+  implicit def apply[H <: HPath, D](h: H)(implicit pathMatcher: PathMatcher[H, D]): PathDecoder[D] = {
+    pathMatcher.decoder(h)
+  }
 }

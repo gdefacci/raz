@@ -1,5 +1,6 @@
 package org.obl.raz
 
+import scala.language.implicitConversions
 import scala.language.higherKinds 
 
 trait UriTemplateEncoder[UT] {
@@ -43,5 +44,9 @@ object UriTemplateEncoder {
     def fragment = UriTemplateEncoder[String](nm => UriTemplate.create(fragment = Some(PlaceHolder(nm))))
     
   }
-  
+
+  implicit def apply[H <: HPath, UT](h: H)(implicit uthf: UTHPathF[H, UT]): UriTemplateEncoder[UT] = {
+    val ute = uthf.apply(h)
+    UriTemplateEncoder(ute)
+  }
 }
