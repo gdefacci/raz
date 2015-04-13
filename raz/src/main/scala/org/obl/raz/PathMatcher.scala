@@ -15,8 +15,12 @@ object PathMatcher {
       def decoder(h: H) = f(h)
     }
 
-  implicit def pathMatcher[P <: PathPosition, S <: P] = apply[BasePath[P,S], Path] { path =>
-    PathDecoder( p => PathUtils.subtract(p,path).map( rest => PathMatchResult(path, rest) ) )
+//  implicit def pathMatcher[P <: PathPosition, S <: P] = apply[BasePath[P,S], Path] { path =>
+//    PathDecoder( (p:Path) => PathUtils.subtract(p,path).map( rest => PathMatchResult(path, rest) ) )
+//  }
+  
+  implicit def pathMatcher = apply[Path, Path] { path =>
+    PathDecoder( (p:Path) => PathUtils.subtract(p,path).map( rest => PathMatchResult(path, rest) ) )
   }
   
   implicit def matcher1[T1] = apply[DecHPath1[T1], T1]( { h =>

@@ -191,7 +191,7 @@ object PathDecoder {
     }
   }
   
-  def stringParamValue(pred:QParamSg => Boolean, paramDescription:String) = PathDecoder { p =>
+  def stringParamValue(pred:QParamSg => Boolean, paramDescription:String) = PathDecoder[(String, String)] { p =>
     optStringParamValue(pred, paramDescription).decode(p).flatMap {
       case PathMatchResult((nm, Some(v)), rest) => \/-(PathMatchResult((nm, v), rest))
       case PathMatchResult((nm, _), rest) => -\/(MissingPathPartException(PathPart.ParamValue(nm), rest))
@@ -208,7 +208,7 @@ object PathDecoder {
   
   def enumParamValue[E <: Enumeration](e:E):String => PathDecoder[E#Value] = named(_:String, e.withName(_))
   
-  implicit def apply[H <: HPath, D](h: H)(implicit pathMatcher: PathMatcher[H, D]): PathDecoder[D] = {
+  implicit def apply[H, D](h: H)(implicit pathMatcher: PathMatcher[H, D]): PathDecoder[D] = {
     pathMatcher.decoder(h)
   }
 }
