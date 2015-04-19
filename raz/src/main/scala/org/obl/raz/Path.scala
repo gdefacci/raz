@@ -109,7 +109,7 @@ object BasePath {
   }
 }
 
-object RelativePath extends EmptyPathAdder {
+object RelativePath extends RelativePath[SegmentPosition, SegmentPosition](PathSg.empty, Nil, None) with EmptyPathAdder {
   
   def apply(path:PathSg) = 
     new RelativePath[SegmentPosition, SegmentPosition](path, Nil, None) 
