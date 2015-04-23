@@ -2,11 +2,6 @@ package org.obl.raz.unfiltered
 
 import org.obl.raz
 import unfiltered.request._
-import scalaz.{-\/, \/, \/-}
-import org.obl.raz.PathDecoder
-import org.obl.raz.PathPosition
-import org.obl.raz.PathConverter
-import org.obl.raz.ext.PathConversion
 
 import scala.language.implicitConversions
 
