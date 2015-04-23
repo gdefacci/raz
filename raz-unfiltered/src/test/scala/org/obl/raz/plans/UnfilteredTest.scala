@@ -27,6 +27,7 @@ import scala.language.postfixOps
     classOf[UnfilteredTest2a],
     classOf[UnfilteredTest3a],
     classOf[UnfilteredTest3b],
+    classOf[AmbiguityTest],
     classOf[UnfilteredTest]))
 class UnfilteredSuite 
 
@@ -201,6 +202,37 @@ class UnfilteredTest3b extends FunsuiteServed with Matchers {
 
     http(host / "bbb" / "abba" <<? Map("bb" -> "BB") as_str) should be("test:bbb:BB")
     http(host / "bbb" / "abba" <<? Map("bb" -> "BB", "cc" -> "bvbv") as_str) should be("test:bbb:BB")
+
+    assertCode(404)(http(host / "bbb" / "abba" <<? Map("bbb" -> "BB") as_str))
+  }
+
+}
+
+@RunWith(classOf[JUnitRunner])
+class AmbiguityTest extends FunsuiteServed with Matchers {
+
+  val Pth2 = RelativePath / Segment.string / "abba" && Param.string("bb")
+  val Pth2a = RelativePath / Segment.int / "abba" && Param.string("bb")
+  val Pth2a1 = RelativePath / Segment.int / "abba" && Param.int("bb")
+  val Pth2b = RelativePath / Segment.boolean / "abba" && Param.string("bb")
+
+  def setup = _.plan(Planify {
+    case GET(Pth2b((a, b))) => ResponseString(s"2b:$a:$b") ~> Ok  
+    case GET(Pth2a1((a, b))) => ResponseString(s"2a1:$a:$b") ~> Ok  
+    case GET(Pth2a((a, b))) => ResponseString(s"2a:$a:$b") ~> Ok  
+    case GET(Pth2((a, b))) => ResponseString(s"2:$a:$b") ~> Ok
+  })
+
+  test("pth3 partial") {
+    assertCode(404)(http(host / "aaa" as_str))
+    assertCode(404)(http(host / "bbb" / "abba" / "ccc" as_str))
+    assertCode(404)(http(host / "bbb" / "abba" / "ccc" / "ddd" as_str))
+
+    http(host / "bbb" / "abba" <<? Map("bb" -> "BB") as_str) should be("2:bbb:BB")
+    http(host / "111" / "abba" <<? Map("bb" -> "BB") as_str) should be("2a:111:BB")
+    http(host / "111" / "abba" <<? Map("bb" -> "232") as_str) should be("2a1:111:232")
+    http(host / "true" / "abba" <<? Map("bb" -> "232") as_str) should be("2b:true:232")
+    assertCode(404)(http(host / "bbb" / "abba" <<? Map("bb" -> "BB", "cc" -> "bvbv") as_str))
 
     assertCode(404)(http(host / "bbb" / "abba" <<? Map("bbb" -> "BB") as_str))
   }
