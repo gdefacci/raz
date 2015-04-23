@@ -90,17 +90,11 @@ object BasePath {
     lazy val segmentAdderSelf = path
   } 
   
-  case class ParamAdderImplicit[S]()
-  
-  implicit val paramAdderImplicitBase = ParamAdderImplicit[BasePosition]
-  implicit val paramAdderImplicitSegment = ParamAdderImplicit[SegmentPosition]
-  implicit val paramAdderImplicitParam = ParamAdderImplicit[ParamPosition]
-  
-  implicit def toParamAdder[P >: ParamPosition <: PathPosition, A <: P](path:BasePath[P,A])(implicit pai:ParamAdderImplicit[A]) = new ParamAdder[P,A] {
+  implicit def toParamAdder[P >: ParamPosition <: PathPosition, A >: ParamPosition <: P](path:BasePath[P,A]) = new ParamAdder[P,A] {
     def paramAdderSelf = path
   }
   
-  implicit def toFragmentAdder[P >: FragmentPosition <: PathPosition, S <: P](path:BasePath[P,S])(implicit pai:ParamAdderImplicit[S]) = new FragmentAdder[P] {
+  implicit def toFragmentAdder[P >: FragmentPosition <: PathPosition, S >: ParamPosition <: P](path:BasePath[P,S]) = new FragmentAdder[P] {
     def fragmentAdderSelf = path
   }
 

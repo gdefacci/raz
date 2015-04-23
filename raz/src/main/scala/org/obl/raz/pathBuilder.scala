@@ -8,8 +8,8 @@ trait BasePathSegmentAdder[P >: SegmentPosition <: PathPosition] {
   def add(sg:String):BasePath[P, SegmentPosition] = BasePath[P, SegmentPosition](baseOf(segmentAdderSelf), segmentAdderSelf.path.add(sg), segmentAdderSelf.params, segmentAdderSelf.fragment)
   def / (sg:String) = add(sg)
   
-  def add[D,E,UT,S <: SegmentPosition](pf: PathConverter[D,E,UT,SegmentPosition, S]) = HPathConsFactory[P].create(HPathNil(segmentAdderSelf), pf)
-  def /[D,E,UT,S <: SegmentPosition](pf: PathConverter[D,E,UT,SegmentPosition,S])  = add(pf)
+  def add[D,E,UT,P1 >: SegmentPosition <: P, S <: SegmentPosition](pf: PathConverter[D,E,UT,P1, S]) = HPathConsFactory[P1].create(HPathNil(segmentAdderSelf), pf)
+  def /[D,E,UT,P1 >: SegmentPosition <: P, S <: SegmentPosition](pf: PathConverter[D,E,UT,SegmentPosition,S])  = add(pf)
   
 } 
 
@@ -34,9 +34,9 @@ trait BaseParamAdder[P >: ParamPosition <: PathPosition, S <: P ] {
   def addParam(nm:String, value:String) = BasePath[P,ParamPosition](baseOf(paramAdderSelf), paramAdderSelf.path, paramAdderSelf.params ++ Seq(QParamSg(nm, value)), paramAdderSelf.fragment)
   def && (nm:String, value:String) = addParam(nm, value)
   
-  def addParam[D,E,UT, S1 <: ParamPosition](pf: PathConverter[D,E,UT,ParamPosition,S1]) = 
-    HPathConsFactory[P].create(HPathNil[P, S](paramAdderSelf), pf)
-  def &&[D,E,UT, S1 <: ParamPosition](pf: PathConverter[D,E,UT,ParamPosition,S1])  = addParam(pf)
+  def addParam[D,E,UT,P1 >: ParamPosition <: P, S1 <: ParamPosition](pf: PathConverter[D,E,UT,P1,S1]) = 
+    HPathConsFactory[P1].create(HPathNil[P, S](paramAdderSelf), pf)
+  def &&[D,E,UT,P1 >: ParamPosition <: P, S1 <: ParamPosition](pf: PathConverter[D,E,UT,ParamPosition,S1])  = addParam(pf)
   
 }
 

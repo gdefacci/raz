@@ -1,31 +1,31 @@
 package org.obl.raz
 
 import scalaz.{ -\/, \/, \/- }
-
 import scala.language.implicitConversions
+import scala.annotation.unchecked.uncheckedVariance
 
-class PathConverter[D, E, UT, P <: PathPosition, S <: PathPosition] private (d: Path => Throwable \/ PathMatchResult[D, Path], e: E => Path, ute: UT => UriTemplate) extends PathDecoder[D] with PathEncoder[E] with UriTemplateEncoder[UT] {
+class PathConverter[D, E, UT,+P <: PathPosition, S <: PathPosition] private (d: Path => Throwable \/ PathMatchResult[D, Path], e: E => Path, ute: UT => UriTemplate) extends PathDecoder[D] with PathEncoder[E] with UriTemplateEncoder[UT] {
   def decode(path: Path) = d(path)
   def encode(t: E): Path = e(t)
   def toUriTemplate(t: UT) = ute(t)
 
-  type Decoder[T] = PathConverter[T, E, UT, P, S]
-  type Encoder[T] = PathConverter[D, T, UT, P, S]
-  type UTEncoder[T] = PathConverter[D, E, T, P, S]
+  type Decoder[T] = PathConverter[T, E, UT, P @uncheckedVariance, S]
+  type Encoder[T] = PathConverter[D, T, UT, P @uncheckedVariance, S]
+  type UTEncoder[T] = PathConverter[D, E, T, P @uncheckedVariance, S]
 
-  protected def createDecoder[T1](f: Path => Throwable \/ PathMatchResult[T1, Path]) = new PathConverter[T1, E, UT, P, S](f, e, ute)
-  protected def createEncoder[T1](f: T1 => Path) = new PathConverter[D, T1, UT, P, S](d, f, ute)
-  protected def createUriTemplateEncoder[T1](f: T1 => UriTemplate) = new PathConverter[D, E, T1, P, S](d, e, UriTemplateEncoder.apply[T1](f).toUriTemplate(_))
+  protected def createDecoder[T1](f: Path => Throwable \/ PathMatchResult[T1, Path]) = PathConverter[T1, E, UT, P, S](f, e, ute)
+  protected def createEncoder[T1](f: T1 => Path) = PathConverter[D, T1, UT, P, S](d, f, ute)
+  protected def createUriTemplateEncoder[T1](f: T1 => UriTemplate) = PathConverter[D, E, T1, P, S](d, e, UriTemplateEncoder.apply[T1](f).toUriTemplate(_))
 
-  private[raz] def addPart(sg: PathSg) = addPath(RelativePath(sg))
-  private[raz] def addPart(sg: QParamSg) = addPath(RelativePath(sg :: Nil))
-  private[raz] def addFragmentPart(f: String) = addPath(RelativePath(fragment = f))
+  private[raz] def addPart(sg: PathSg):PathConverter[D, E, UT, P, SegmentPosition] = addPath(RelativePath(sg))
+  private[raz] def addPart(sg: QParamSg):PathConverter[D, E, UT, P, ParamPosition] = addPath(RelativePath(sg :: Nil))
+  private[raz] def addFragmentPart(f: String):PathConverter[D, E, UT, P, FragmentPosition] = addPath(RelativePath(fragment = f))
 
   private[raz] def addPath[A1 <: PathPosition](p: BasePath[_, A1]) =
     PathConverter[D, E, UT, P, A1](PathDecoder.withSuffix(this, p), PathEncoder.withSuffix(this, p), UriTemplateEncoder.withSuffix(this, p))
 
   def caseMap[T1](tupled: D => T1, caseUnapply: T1 => Option[E]): PathConverter[T1, T1, UT, P, S] = {
-    new PathConverter(d.andThen(_.flatMap( p => \/.fromTryCatch(p.mapValue(tupled) ))), e.compose((t1: T1) => caseUnapply(t1).get), ute)
+    PathConverter(d.andThen(_.flatMap( p => \/.fromTryCatch(p.mapValue(tupled) ))), e.compose((t1: T1) => caseUnapply(t1).get), ute)
   }
 
 }
