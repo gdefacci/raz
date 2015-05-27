@@ -44,7 +44,7 @@ object Sample extends App {
 
   case class CityStreetNumber(cityId: Int, street: String, number: String)
 
-  val mstreet = street.caseMap(CityStreetNumber.tupled, CityStreetNumber.unapply)
+  val mstreet = PathConverter(street).caseMap(CityStreetNumber.tupled, CityStreetNumber.unapply)
 
   assert("/cities/123?street=Baker+street&number=12a" == mstreet(CityStreetNumber(123, "Baker street", "12a")).render)
 

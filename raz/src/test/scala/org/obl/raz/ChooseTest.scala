@@ -22,7 +22,7 @@ class ChooseTest {
   
   val sgDecoder:PathDecoder[Sg] = PathDecoder.intSegment.map(IntSg).orElse( PathDecoder.stringSegment.map(StringSg) )
   
-  val sg = Segment.factory.create(sgDecoder, sgEncoder, UriTemplateEncoder.Simple.segment)
+  val sg = Segment.factory(sgDecoder, sgEncoder, UriTemplateEncoder.Simple.segment)
   
   
   @Test

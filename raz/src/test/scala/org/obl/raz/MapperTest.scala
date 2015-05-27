@@ -21,9 +21,9 @@ class MapperTest {
     
 //    var sc = Converter.tryConverter(Cl1.tupled, Cl1.unapply)
     
-    val u2 = u1.caseMap(Cl1.tupled, Cl1.unapply) 
+    val u2 = PathConverter(u1).caseMap(Cl1.tupled, Cl1.unapply) 
 
-    check(u1, (10, "abba", true))
+    check(PathConverter(u1), (10, "abba", true))
     check(u2, Cl1(10, "abba", true))
     
   }
@@ -34,9 +34,9 @@ class MapperTest {
     
 //    var sc = Converter.tryConverter(Cl1.tupled, Cl1.unapply)
     
-    val u2 = u1.caseMap(Cl1.tupled, Cl1.unapply)
+    val u2 = PathConverter(u1).caseMap(Cl1.tupled, Cl1.unapply)
     
-    check(u1, (10, "abba", true))
+    check(PathConverter(u1), (10, "abba", true))
     check(u2, Cl1(10, "abba", true))
   }
 
@@ -46,10 +46,10 @@ class MapperTest {
     
 //    var sc = Converter.tryConverter(Cl1.tupled, Cl1.unapply)
     
-    val u2 = u1.caseMap(Cl1.tupled, Cl1.unapply) 
+    val u2 = PathConverter(u1).caseMap(Cl1.tupled, Cl1.unapply) 
     
-    check(u1, (10, "abba", true))
-    check(RelativePath && u2, Cl1(10, "abba", true))
+    check(PathConverter(u1), (10, "abba", true))
+    check(PathConverter(RelativePath && u2), Cl1(10, "abba", true))
   }
 
   
@@ -97,7 +97,7 @@ class MapperTest {
    		
    		
    	val po = PostalAddress("firstName", "lastName", "stType", "street", "numb", 12, "HO", "3456", "AN")	
-   	val mu = postalAdressParams.caseMap(PostalAddress.tupled, PostalAddress.unapply)	
+   	val mu = PathConverter(postalAdressParams).caseMap(PostalAddress.tupled, PostalAddress.unapply)	
    	val mupth:Path = mu(po)	
    	
    	println("==============")

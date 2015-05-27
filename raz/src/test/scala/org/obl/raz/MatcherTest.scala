@@ -88,7 +88,7 @@ class MatcherTest {
   @Test
   def testMapAndMatch = {
 //    val sfx = (RelativePath && Param.int("a") && Param.string("b")).mapTo(Converter.tryConverter(Cl1.tupled, Cl1.unapply))
-    val sfx = (RelativePath && Param.int("a") && Param.string("b")).caseMap(Cl1.tupled, Cl1.unapply)
+    val sfx = PathConverter(RelativePath && Param.int("a") && Param.string("b")).caseMap(Cl1.tupled, Cl1.unapply)
     val prfx = RelativePath / "h" / Segment.string
 
     val u1 = prfx && sfx

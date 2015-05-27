@@ -43,6 +43,14 @@ object RazBuild  extends Build {
     )
   )
   
+  lazy val razMachine = Project (
+    "raz-machine",
+    file ("raz-machine"),
+    settings = buildSettings ++ Seq(
+        libraryDependencies ++= testDeps
+    )
+  ) dependsOn raz
+  
   lazy val razUnfiltered = Project (
     "raz-unfiltered",
     file ("raz-unfiltered"),
@@ -51,12 +59,22 @@ object RazBuild  extends Build {
         libraryDependencies ++= testDeps,
         libraryDependencies ++= unfilteredTest
     )
+  ) dependsOn (raz, razMachine)
+
+  lazy val razServlet = Project (
+    "raz-servlet",
+    file ("raz-servlet"),
+    settings = buildSettings ++ Seq(
+        libraryDependencies += servletDep,
+        libraryDependencies ++= testDeps
+    )
   ) dependsOn raz
+
   
   lazy val root= Project(
     "root",  
     base = file("."),
     settings = buildSettings 
-  ) aggregate(raz, razUnfiltered)
+  ) aggregate(raz, razServlet, razUnfiltered, razMachine)
 
 }

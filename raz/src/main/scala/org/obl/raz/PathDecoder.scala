@@ -6,6 +6,16 @@ import exceptions._
 import scala.language.higherKinds 
 import scala.language.implicitConversions 
 
+sealed trait Shape
+sealed trait SimpleShape
+
+//object Shape {
+//  case class Generic(shape:HPath) extends Shape
+//  case class Segment(suffix:Path) extends SimpleShape 
+//  case class Param(suffix:Path) extends SimpleShape 
+//  case class ParamWithName(name:String, suffix:Path) extends SimpleShape 
+//}
+
 trait PathDecoder[T] {
   import PathDecoder.{Result}
   
@@ -208,7 +218,8 @@ object PathDecoder {
   
   def enumParamValue[E <: Enumeration](e:E):String => PathDecoder[E#Value] = named(_:String, e.withName(_))
   
-  implicit def apply[H, D](h: H)(implicit pathMatcher: PathMatcher[H, D]): PathDecoder[D] = {
-    pathMatcher.decoder(h)
-  }
+//  implicit def apply[H <: Path, D](h: H)(implicit pathMatcher: PathMatcher[H, D]): PathDecoder[D] = {
+//    pathMatcher.decoder(h)
+//  }
+  
 }

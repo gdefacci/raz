@@ -13,7 +13,10 @@ object HPath {
     
   implicit def toHParamAdder[H <: HPath, P >: ParamPosition <: PathPosition, S <: P, TD,TE,UT](path:HPathCons[H,P,S,TD, TE,UT]) =
     new HParamAdder[H,P,S,TD,TE,UT](path:HPathCons[H,P,S,TD,TE,UT]) 
-   
+
+  implicit def apply[H <: HPath, D](h: H)(implicit pathMatcher: PathMatcher[H, D]): PathDecoder[D] = {
+    pathMatcher.decoder(h)
+  }   
 }
 
 case class HPathNil[P <: PathPosition, S <: P](path:BasePath[P,S]) extends HPath {
@@ -35,6 +38,11 @@ object HPathConsFactory {
 }
 
 class HPathCons[+H <: HPath,+P <: PathPosition, S <: P, TD, TE, UT](val head:H, private[raz] val value:PathConverter[TD, TE, UT, P, S]) extends HPath {
+
+  def convertersList:Seq[PathConverter[_,_,_,_,_]] = head match {
+    case n:HPathNil[_,_] => Seq(value)
+    case n:HPathCons[_,_,_,_,_,_] => Seq(value) ++ n.convertersList
+  }
   
   override def toString = {
     s"HPathCons($value, $head)"
@@ -58,6 +66,10 @@ class HPathOps[H <: HPath](value:H) {
   def concat[H1 <: HPath, Out <: HPath](h1:H1)(implicit happ:HAppend[H, H1, Out]):Out = happ.concat(value, h1)
   
   def at[H1 <: HPath](base:PathBase)(implicit atAux:AtAux[H, H1]) = atAux.apply(value)(base)
+  
+//  def decodeFull[D](p:Path)(implicit pathMatcher: PathMatcher[H, D]) = pathMatcher.decoder(value).decodeFull(p)
+//  
+//  def decode[D](p:Path)(implicit pathMatcher: PathMatcher[H, D]) = pathMatcher.decoder(value).decode(p)
 }
 
 object HPathSegmentAdder {

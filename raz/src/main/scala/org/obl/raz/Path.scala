@@ -45,6 +45,10 @@ object Path  {
 
   def apply(pathBase:Option[PathBase], path:PathSg, params:Seq[QParamSg], fragment:Option[String]):Path =
     BasePath(pathBase, path, params, fragment)
+    
+  implicit def toPathDecode(path: Path): PathDecoder[Path] = {
+    PathDecoder( (p:Path) => PathUtils.subtract(p,path).map( rest => PathMatchResult(path, rest) ) )
+  }  
 }
 
 sealed trait PathPosition
@@ -85,6 +89,11 @@ object BasePath {
     }
     r.asInstanceOf[BasePath[P,S]]
   }
+  
+  private [raz] def cast[P <: PathPosition, S <: P](p:Path):BasePath[P,S] = {
+    BasePath[P,S](Path.baseOf(p), p.path, p.params, p.fragment)
+  }
+
 
   implicit def toPathSegmentAdder[P >: SegmentPosition <: PathPosition](path:BasePath[P, SegmentPosition])  = new PathSegmentAdder[P] {
     lazy val segmentAdderSelf = path
@@ -100,6 +109,10 @@ object BasePath {
 
   implicit def apply[P <: PathPosition, S <: P, R[_,_,_]](h:BasePath[P,S])(implicit pathConversion:ext.PathConversion[R]):R[Path,Path,Path] = {
     pathConversion(h)
+  }
+  
+  implicit def toPathDecode[P <: PathPosition, S <: P, D](h: BasePath[P,S])(implicit pathMatcher: PathMatcher[Path, D]): PathDecoder[D] = {
+    pathMatcher.decoder(h)
   }
 }
 

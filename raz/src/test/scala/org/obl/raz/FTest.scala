@@ -88,7 +88,7 @@ class FTest {
     println(u1(List("p1", "p2", "p3")))
     assertEquals("/base/property/p1/property/p2/property/p3", u1(List("p1", "p2", "p3")).render )
     
-    TestHelper.check(u1, Seq("p1","p3", "p4"))
+    TestHelper.check(PathConverter(u1), Seq("p1","p3", "p4"))
   }
   
 }

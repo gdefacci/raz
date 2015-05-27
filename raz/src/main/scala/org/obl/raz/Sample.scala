@@ -147,10 +147,11 @@ object Sample extends App {
     
 //    var sc = Converter.tryConverter(Cl1.tupled, Cl1.unapply)
     
-    val u2 = u1.caseMap(Cl2.tupled, Cl2.unapply) 
-    val up2 = up1.caseMap(Cl2.tupled, Cl2.unapply) 
+    val u2 = PathConverter(u1).caseMap(Cl2.tupled, Cl2.unapply) 
+    val up2 = PathConverter(up1).caseMap(Cl2.tupled, Cl2.unapply) 
 
     RelativePath / up2
+    RelativePath / u2 / up2 
 //    check(u1, (10, "abba", true))
 //    check(Raz / u2, Cl1(10, "abba", true))
     

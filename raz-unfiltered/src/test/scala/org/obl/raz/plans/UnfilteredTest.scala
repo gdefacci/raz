@@ -35,7 +35,7 @@ class UnfilteredSuite
 class UnfilteredTest0 extends FunsuiteServed with Matchers {
 
   val Pth1 = RelativePath / "a"  
-  val Pth2:PathConverter[Path,Path,Path, SegmentPosition, SegmentPosition] = RelativePath / "bb" / "cc"
+  val Pth2:PathDecoder[Path] = RelativePath / "bb" / "cc"
   val Pth3 = RelativePath && ("a", "bb")
 
   def setup = _.plan(Planify {
