@@ -9,13 +9,6 @@ import scala.language.implicitConversions
 sealed trait Shape
 sealed trait SimpleShape
 
-//object Shape {
-//  case class Generic(shape:HPath) extends Shape
-//  case class Segment(suffix:Path) extends SimpleShape 
-//  case class Param(suffix:Path) extends SimpleShape 
-//  case class ParamWithName(name:String, suffix:Path) extends SimpleShape 
-//}
-
 trait PathDecoder[T] {
   import PathDecoder.{Result}
   
@@ -151,7 +144,7 @@ object PathDecoder {
     }
   }
   
-  def fromStringSegment[T](f:String => T) = stringSegment.flatMapResult { x => \/.fromTryCatch(f(x)) }
+  def fromStringSegment[T](f:String => T) = stringSegment.flatMapResult { x => \/.fromTryCatchNonFatal(f(x)) }
   
   lazy val intSegment = fromStringSegment(_.toInt)
   lazy val longSegment = fromStringSegment(_.toLong)
@@ -178,7 +171,7 @@ object PathDecoder {
     }
   }
   
-  def fromStringParam[O](f:String => O) = stringParam.flatMapResult( p => \/.fromTryCatch(f(p._2)).map( p._1 -> _ ) )
+  def fromStringParam[O](f:String => O) = stringParam.flatMapResult( p => \/.fromTryCatchNonFatal(f(p._2)).map( p._1 -> _ ) )
   
   lazy val intParam = fromStringParam(_.toInt)
   lazy val longParam = fromStringParam(_.toLong)
@@ -209,7 +202,7 @@ object PathDecoder {
   }
   
   def named[T](parName:String, f:String => T):PathDecoder[T] = 
-      stringParamValue(_.name == parName, s"named $parName").map(_._2).flatMapResult { x => \/.fromTryCatch(f(x)) }
+      stringParamValue(_.name == parName, s"named $parName").map(_._2).flatMapResult { x => \/.fromTryCatchNonFatal(f(x)) }
   
   lazy val stringParamValue = named(_:String, i => i)
   lazy val intParamValue = named(_:String, _.toInt)

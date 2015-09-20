@@ -51,7 +51,7 @@ class PathConverter[D, E, UT,+P <: PathPosition, S <: PathPosition] private (d: 
 
   def caseMap[T1](tupled: D => T1, caseUnapply: T1 => Option[E]): PathConverter[T1, T1, UT, P, S] = {
     PathConverter(
-        PathDecoder(d.andThen(_.flatMap( p => \/.fromTryCatch(p.mapValue(tupled) ))))
+        PathDecoder(d.andThen(_.flatMap( p => \/.fromTryCatchNonFatal(p.mapValue(tupled) ))))
         , e.compose((t1: T1) => caseUnapply(t1).get), ute, kind)
   }
 

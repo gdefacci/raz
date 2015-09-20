@@ -12,6 +12,10 @@ case object HTTPS extends Protocol {
   val render = "https"
 }
 
+case object WS extends Protocol {
+  val render = "ws"
+}
+
 case class PathBase(protocol:Protocol, host:String, port:Int) extends BasePathSegmentAdder[BasePosition] with BaseParamAdder[BasePosition, SegmentPosition] {
   lazy val segmentAdderSelf = AbsolutePath(this)
 	lazy val paramAdderSelf = segmentAdderSelf 
