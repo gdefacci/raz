@@ -87,20 +87,20 @@ object RazBuild  extends Build {
   //   )
   // ) dependsOn raz
   // 
-  // lazy val razServlet = Project (
-  //   "raz-servlet",
-  //   file ("raz-servlet"),
-  //   settings = buildSettings ++ Seq(
-  //       libraryDependencies += servletDep,
-  //       libraryDependencies ++= testDeps
-  //   )
-  // ) dependsOn raz
+  lazy val razServlet = Project (
+    "raz-servlet",
+    file ("raz-servlet"),
+    settings = buildSettings ++ Seq(
+        libraryDependencies += servletDep,
+        libraryDependencies ++= testDeps
+    )
+  ) dependsOn raz
 
   lazy val root= Project(
     "root",  
     base = file("."),
     settings = buildSettings 
-  ) aggregate(raz, razUnfiltered)  
+  ) aggregate(raz, razUnfiltered, razServlet)  
   //) aggregate(raz, razServlet, razUnfiltered, razHttp4s, razMachine)
 
 }
