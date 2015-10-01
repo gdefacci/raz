@@ -36,17 +36,4 @@ object UriTemplate {
     UriTemplate(Path.baseOf(p), UriTemplatePathSg(p.path) :: Nil, p.params.map(UriTemplateParamSg), p.fragment.map(UriTemplateFragmentImpl.apply(_)))
   }
   
-  def makePlaceholdersExpandeded(ut:UriTemplate):UriTemplate = {
-    UriTemplate(ut.base, ut.path.map {
-      case PlaceHolder(nm) => ExpandPlaceHolder(nm)
-      case x => x
-    }, ut.params.map {
-      case PlaceHolder(nm) => ExpandPlaceHolder(nm)
-      case x => x
-    }, ut.fragment.map {
-      case PlaceHolder(nm) => ExpandPlaceHolder(nm)
-      case x => x
-    })    
-  }
-    
 }

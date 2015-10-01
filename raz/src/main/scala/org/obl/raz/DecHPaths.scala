@@ -3,7 +3,7 @@ package org.obl.raz
 object DecHPaths {
   
   type Cons[+H <: HPath, T] =
-    HPathCons[H,_,_,T,_,_]
+    HPathCons[H,_ <: PathPosition,_ <: PathPosition,T,_,_]
 
   type DecHPath1[T1] = Cons[HPathNil[_,_],T1]
   type DecHPath2[T1, T2] = Cons[DecHPath1[T1],T2]

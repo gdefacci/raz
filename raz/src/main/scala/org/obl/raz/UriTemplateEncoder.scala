@@ -28,8 +28,21 @@ object UriTemplateEncoder {
     UriTemplateEncoder[Option[T]]( sq => UriTemplateUtils.mergeAll(sq.map(enc.toUriTemplate(_)).toSeq) )
   }
   
+  private def makePlaceholdersExpandeded(ut:UriTemplate):UriTemplate = {
+    UriTemplate(ut.base, ut.path.map {
+      case PlaceHolder(nm) => ExpandPlaceHolder(nm)
+      case x => x
+    }, ut.params.map {
+      case PlaceHolder(nm) => ExpandPlaceHolder(nm)
+      case x => x
+    }, ut.fragment.map {
+      case PlaceHolder(nm) => ExpandPlaceHolder(nm)
+      case x => x
+    })    
+  }
+  
   def expand[T](enc:UriTemplateEncoder[T]):UriTemplateEncoder[T] = {
-    UriTemplateEncoder[T]( sq => UriTemplate.makePlaceholdersExpandeded( enc.toUriTemplate(sq) ))
+    UriTemplateEncoder[T]( sq => makePlaceholdersExpandeded( enc.toUriTemplate(sq) ))
   }
   
   private[raz] def withSuffix[T](e:UriTemplateEncoder[T], sfx:Path) = {
