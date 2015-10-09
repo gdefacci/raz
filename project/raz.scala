@@ -35,7 +35,7 @@ object RazBuild  extends Build {
    "org.http4s" %% "http4s-dsl"          % http4sVersion
   )
   
-  // val shapelessDep = "com.chuusai" %% "shapeless" % "2.2.3"
+  val shapelessDep = "com.chuusai" %% "shapeless" % "2.2.3"
   
   val testDeps = Seq(
     "junit" % "junit" % "4.10" % "test",
@@ -100,7 +100,6 @@ object RazBuild  extends Build {
     "root",  
     base = file("."),
     settings = buildSettings 
-  ) aggregate(raz, razUnfiltered, razServlet, razHttp4s)  
-  //) aggregate(raz, razServlet, razUnfiltered, razHttp4s, razMachine)
+  ) aggregate(raz, razServlet, razUnfiltered, razHttp4s)
 
 }

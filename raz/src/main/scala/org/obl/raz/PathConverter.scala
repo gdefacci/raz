@@ -31,7 +31,7 @@ class PathConverter[D, E, UT,+P <: PathPosition, S <: PathPosition] private (d: 
         PathDecoder(d.andThen(_.flatMap( p => \/.fromTryCatchNonFatal(p.mapValue(tupled) ))))
         , e.compose((t1: T1) => caseUnapply(t1).get), ute)
   }
-
+  
 }
 
 object PathConverter {
@@ -69,6 +69,23 @@ object PathConverter {
   def seq[D, E, UT, P <: PathPosition, S <: PathPosition](pc: PathConverter[D, E, UT, P, S]): PathConverter[Seq[D], Seq[E], UT, P, S] = {
     PathConverter[Seq[D], Seq[E], UT, P, S](PathDecoder.seq(pc), PathEncoder.seq(pc), UriTemplateEncoder.expand(pc))
   }
+  
+  def prependEncoders[D, E, UT,P <: PathPosition, S <: PathPosition](sg:PathSg, pc:PathConverter[D,E,UT,P,S]) = {
+    PathConverter[D,E,UT,P,S](
+      PathDecoder(pc.decode(_)),
+      PathEncoder.prepend(sg, PathEncoder(pc.encode _)),
+      UriTemplateEncoder.prepend(sg, UriTemplateEncoder(pc.toUriTemplate _))
+    )
+  }
+  
+  def encodersAt[D, E, UT,P <: PathPosition, S <: PathPosition](host:PathBase, pc:PathConverter[D,E,UT,P,S]) = {
+    PathConverter[D,E,UT,P,S](
+      PathDecoder(pc.decode(_)),
+      PathEncoder.at(host, PathEncoder(pc.encode _)),
+      UriTemplateEncoder.at(host, UriTemplateEncoder(pc.toUriTemplate _))
+    )
+  }
+
 
   private class PathConverterFactory[P <: PathPosition, S <: PathPosition] {
     def create[D, E, UT](d: PathDecoder[D], e: PathEncoder[E], ute: UriTemplateEncoder[UT]): PathConverter[D, E, UT, P, S] = {

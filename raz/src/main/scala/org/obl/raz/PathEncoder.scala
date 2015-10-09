@@ -28,6 +28,20 @@ object PathEncoder {
     }
   }
   
+  def prepend[T](sg:PathSg, e:PathEncoder[T]):PathEncoder[T] = {
+    PathEncoder[T] { v =>
+      val r1 = e.encode(v)
+      Path(Path.baseOf(r1), sg.add(r1.path), r1.params, r1.fragment)
+    }
+  }
+  
+  def at[T](base:PathBase, e:PathEncoder[T]):PathEncoder[T] = {
+    PathEncoder[T] { v =>
+      val r1 = e.encode(v)
+      Path(Some(base), r1.path, r1.params, r1.fragment)
+    }
+  }
+  
   def fromPath(p:Path):PathEncoder[Path] = apply[Path](p => p)
   
   def seq[T](enc:PathEncoder[T]):PathEncoder[Seq[T]] = {

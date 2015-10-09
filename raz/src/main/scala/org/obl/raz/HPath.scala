@@ -71,7 +71,7 @@ class HPathOps[H <: HPath](value:H) {
 //  
 //  def decode[D](p:Path)(implicit pathMatcher: PathMatcher[H, D]) = pathMatcher.decoder(value).decode(p)
   
-  def toPathCodec[P <: PathPosition, S <: P, D, E](implicit pathMatcher: PathMatcher[H, D], hf: EncHPathF[H, E, BasePath[P, S]]): PathCodec[D, E] = 
+  def toPathCodec[D, E](implicit pathMatcher: PathMatcher[H, D], hf: EncHPathF[H, E, Path]): PathCodec[D, E] = 
    PathCodec(value)
  
   def toPathConverter[P <: PathPosition, S <: P, D, E, UT](implicit pathMatcher: PathMatcher[H, D], hf: EncHPathF[H, E, BasePath[P, S]], uthf: UTHPathF[H, UT]): PathConverter[D, E, UT, P, S] =

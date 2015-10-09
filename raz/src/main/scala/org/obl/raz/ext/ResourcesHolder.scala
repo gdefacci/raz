@@ -18,6 +18,12 @@ package ext
 //  }
 //}
 
+class BaseResource(protected val prefix: Seq[String]) extends RelativePath[SegmentPosition, SegmentPosition](PathSg(prefix), Nil, None) with PathSegmentAdder[SegmentPosition] {
+  def this(prefix: String) = this(Seq(prefix))
+  def this() = this(Nil)
+  
+  def segmentAdderSelf = this
+}
 
 trait ResourceHolder {
 

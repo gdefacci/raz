@@ -35,10 +35,24 @@ object PathCodec {
     }
   }
   
-  implicit def apply[H <: HPath, P <: PathPosition, S <: P, D, E](h: H)(implicit pathMatcher: PathMatcher[H, D], hf: EncHPathF[H, E, BasePath[P, S]]): PathCodec[D, E] = {
+  implicit def apply[P <: Path, H <: HPath, D, E](h: H)(implicit pathMatcher: PathMatcher[H, D], hf: EncHPathF[H, E, P]): PathCodec[D, E] = {
     val d = pathMatcher.decoder(h)
     val e = hf.apply(h)
     PathCodec[D,E](d.decode(_), PathEncoder(e))
+  }
+  
+  def prependEncoder[D, E](sg:PathSg, pc:PathCodec[D,E]) = {
+    PathCodec[D,E](
+      pc.decode(_),
+      PathEncoder.prepend(sg, PathEncoder(pc.encode _)).encode(_)
+    )
+  }
+  
+  def encoderAt[D, E](host:PathBase, pc:PathCodec[D,E]) = {
+    PathCodec[D,E](
+      pc.decode(_),
+      PathEncoder.at(host, PathEncoder(pc.encode _))
+    )
   }
   
 }

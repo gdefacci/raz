@@ -28,6 +28,21 @@ object UriTemplateEncoder {
     UriTemplateEncoder[Option[T]]( sq => UriTemplateUtils.mergeAll(sq.map(enc.toUriTemplate(_)).toSeq) )
   }
   
+  def prepend[T](sg:PathSg, e:UriTemplateEncoder[T]):UriTemplateEncoder[T] = {
+    UriTemplateEncoder[T] { v =>
+      val r1 = e.toUriTemplate(v)
+      UriTemplate(r1.base, UriTemplatePathSg(sg) +: r1.path, r1.params, r1.fragment)
+    }
+  }
+  
+ def at[T](host:PathBase, e:UriTemplateEncoder[T]):UriTemplateEncoder[T] = {
+    UriTemplateEncoder[T] { v =>
+      val r1 = e.toUriTemplate(v)
+      UriTemplate(Some(host), r1.path, r1.params, r1.fragment)
+    }
+  }
+
+  
   private def makePlaceholdersExpandeded(ut:UriTemplate):UriTemplate = {
     UriTemplate(ut.base, ut.path.map {
       case PlaceHolder(nm) => ExpandPlaceHolder(nm)
