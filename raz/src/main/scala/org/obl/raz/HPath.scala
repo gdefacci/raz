@@ -19,7 +19,7 @@ object HPath {
   }   
 }
 
-case class HPathNil[P <: PathPosition, S <: P](path:BasePath[P,S]) extends HPath {
+final case class HPathNil[P <: PathPosition, S <: P](path:BasePath[P,S]) extends HPath {
   override def toString = s"HPathNil($path)"
 }
 

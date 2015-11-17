@@ -40,18 +40,14 @@ object PathConverter {
     new PathConverter[D, E, UT, P, S](d.decode _, e.encode _, ute.toUriTemplate _)
   }
   
-//  def apply[D, E, UT, P <: PathPosition, S <: PathPosition](d: PathDecoder[D], e: PathEncoder[E], ute: UriTemplateEncoder[UT], kind:SimplePathConverterKind): PathConverter[D, E, UT, P, S] = {
-//    new PathConverter[D, E, UT, P, S](d.decode _, e.encode _, ute.toUriTemplate _, kind)
-//  }
-
   def apply[D, E, UT, P <: PathPosition, S <: PathPosition](d: Path => Throwable \/ PathMatchResult[D, Path], e: E => Path, ute: UT => UriTemplate): PathConverter[D, E, UT, P, S] = {
     PathConverter[D, E, UT, P, S](d, e, ute)
   }
   
-//  def fromPath(p:Path) = apply(PathDecoder.fromPath(p), PathEncoder.fromPath(p), UriTemplateEncoder { p:Path => UriTemplate(p) })
-//  
-//  implicit def fromBasePath[P <: PathPosition, S <: P](p:BasePath[P,S]) = 
-//    apply[Path,Path,Path,P,S](PathDecoder.fromPath(p), PathEncoder.fromPath(p), UriTemplateEncoder { p:Path => UriTemplate(p) })
+  def fromPath(p:Path) = apply(PathDecoder.fromPath(p), PathEncoder.fromPath(p), UriTemplateEncoder { p:Path => UriTemplate(p) })
+  
+  def fromPath(decPath:Path, encPath:Path) = 
+    apply(PathDecoder.fromPath(decPath), PathEncoder.fromPath(encPath), UriTemplateEncoder { p:Path => UriTemplate(encPath) })
   
   def apply[H <: HPath, P <: PathPosition, S <: P, D, E, UT](h: H)(implicit pathMatcher: PathMatcher[H, D], hf: EncHPathF[H, E, BasePath[P, S]], uthf: UTHPathF[H, UT]): PathConverter[D, E, UT, P, S] = {
     val d = pathMatcher.decoder(h)
@@ -59,8 +55,6 @@ object PathConverter {
     val ute = uthf.apply(h)
     PathConverter(d, PathEncoder(e), UriTemplateEncoder(ute))
   }
-
-//  private def factory[P <: PathPosition, S <: PathPosition] = new PathConverterFactory[P, S]
 
   def opt[D, E, UT, P <: PathPosition, S <: PathPosition](pc: PathConverter[D, E, UT, P, S]): PathConverter[Option[D], Option[E], Option[UT], P, S] = {
     PathConverter(PathDecoder.opt(pc), PathEncoder.opt(pc), UriTemplateEncoder.opt(pc))

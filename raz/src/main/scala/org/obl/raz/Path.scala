@@ -50,22 +50,22 @@ object Path  {
     PathDecoder( (p:Path) => PathUtils.subtract(p,path).map( rest => PathMatchResult(path, rest) ) )
   }
   
-  def renderPrepend(pg:PathSg, pth:Path):Path = {
-	  val osg = pth.path
-    val sgs = pg.add(pth.path)
-    val renderedPath = Path.baseOf(pth) match {
-      case None => new RelativePath(sgs, pth.params, pth.fragment)
-      case Some(host) => new AbsolutePath(host, sgs, pth.params, pth.fragment)
-    }
-    Path.baseOf(pth) match {
-      case None => new RelativePath(osg, pth.params, pth.fragment) {
-        override def render = renderedPath.render
-      }
-      case Some(host) => new AbsolutePath(host, osg, pth.params, pth.fragment) {
-        override def render = renderedPath.render
-      }
-    }
-  }
+//  def renderPrepend(pg:PathSg, pth:Path):Path = {
+//	  val osg = pth.path
+//    val sgs = pg.add(pth.path)
+//    val renderedPath = Path.baseOf(pth) match {
+//      case None => new RelativePath(sgs, pth.params, pth.fragment)
+//      case Some(host) => new AbsolutePath(host, sgs, pth.params, pth.fragment)
+//    }
+//    Path.baseOf(pth) match {
+//      case None => new RelativePath(osg, pth.params, pth.fragment) {
+//        override def render = renderedPath.render
+//      }
+//      case Some(host) => new AbsolutePath(host, osg, pth.params, pth.fragment) {
+//        override def render = renderedPath.render
+//      }
+//    }
+//  }
 }
 
 sealed trait PathPosition

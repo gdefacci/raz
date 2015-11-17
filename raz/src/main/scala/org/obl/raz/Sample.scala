@@ -51,7 +51,7 @@ object Sample extends App {
   }
   
 
-//  case class Cl1(a:Int,b:Int)
+//  final case class Cl1(a:Int,b:Int)
 //  
 //  
 //
@@ -135,7 +135,7 @@ object Sample extends App {
      
    }
    
-   case class Cl2(a:Int, b:String, c:Boolean)
+   final case class Cl2(a:Int, b:String, c:Boolean)
    
   def testRootPath = {
     val u1 = RelativePath / "a" / Segment.int / "b" / Segment.string / Segment.boolean
