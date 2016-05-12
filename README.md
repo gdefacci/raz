@@ -2,65 +2,56 @@ Raz
 ---
 
 Raz is a type safe scala DSL to create and match urls.
-The following program illustrates few features:
+The following example illustrates few features:
 
-    ```scala
-    import org.obl.raz._
-    import PathConverter._
+    object Sample extends App {
 
-    val state = RelativePath / "countries" / Segment.string / "states" / Segment.string
+      import org.obl.raz._
+      import PathConverter.{ Segment, Param, Fragment }
 
-    assert("/countries/it/states/mi" == state("it", "mi").render)
+      val state = Path / "countries" / Segment.string / "states" / Segment.string
+      val street = Path / "cities" / Segment.int && Param("street").string && Param("number").string
 
-    assert("/countries/{country}/states/{state}" == state.toUriTemplate("country", "state").render)
+      assert("/countries/it/states/mi" == state.pathConverter.encode("it", "mi").render)
+      assert("/countries/{country}/states/{state}" == state.pathConverter.encodeUriTemplate("country", "state").render)
 
-    val street = RelativePath / "cities" / Segment.int && Param.string("street") && Param.string("number")
+      assert("/cities/123?street=Baker+street&number=12a" == street.pathConverter.encode(123, "Baker street", "12a").render)
+      assert("/cities/{city-id}?street={street}&number={number}" == street.pathConverter.encodeUriTemplate("city-id", "street", "number").render)
 
-    assert("/cities/123?street=Baker+street&number=12a" == street(123, "Baker street", "12a").render)
-    println(street.toUriTemplate("city-id", "street", "number").render)
-    assert("/cities/{city-id}?street={street}&number={number}" == street.toUriTemplate("city-id", "street", "number").render)
+      val absStreet = HTTP("mypage.com") / "app" / street.pathConverter
 
-    /**
-     * Absolute url
-     */
+      assert("http://mypage.com/app/cities/123?street=Baker+street&number=12a" == absStreet.pathConverter.encode(123, "Baker street", "12a").render)
 
-    assert("http://mypage.com/countries/it/states/mi" == state.at(HTTP("mypage.com")).apply("it", "mi").render)
-    assert("http://mypage.com/countries/{country}/states/{state}" == state.at(HTTP("mypage.com")).toUriTemplate("country", "state").render)
+      val st2 = HTTP("mypage.com") / street.pathConverter
+      st2.pathConverter.encode(123, "Baker street", "12a").render
 
-    /**
-     * Concatenation
-     */
+      val fullAdrs = HTTP("mypage.com") / (state ++ street).pathConverter
 
-    val fullAdrs = state.concat(street)
+      assert("http://mypage.com/countries/{country}/states/{state}/cities/{city}?street={street}&number={streetNumber}" ==
+        fullAdrs.pathConverter.encodeUriTemplate("country", "state", "city", "street", "streetNumber").render)
 
-    assert("/countries/it/states/mi/cities/123?street=Baker+street&number=12a" == fullAdrs("it", "mi", 123, "Baker street", "12a").render)
+      assert("http://mypage.com/countries/it/states/ts/cities/8?street=via+roma&number=12" ==
+        fullAdrs.pathConverter.encode("it", "ts", 8, "via roma", "12").render)
 
-    assert("/countries/{country}/states/{state}/cities/{city-id}?street={street}&number={street-number}" == fullAdrs.toUriTemplate("country", "state", "city-id", "street", "street-number").render)
+      val pathAdrs = HTTP("mypage.com") / "countries" / "it" / "states" / "ts" / "cities" / "8" && ("street", "via roma") && ("number", "12")
 
-    /**
-     * Mapping
-     */
+      assert(fullAdrs.pathConverter.decodeFull(pathAdrs).toOption == Some(("it", "ts", 8, "via roma", "12")))
 
-    case class CityStreetNumber(cityId: Int, street: String, number: String)
+      case class Address(country: String, state: String, city: Int, street: String, streetNumber: String)
 
-    val mstreet = street.caseMap(CityStreetNumber.tupled, CityStreetNumber.unapply)
+      val fullAdrs1 = fullAdrs.pathConverter.caseMap(Address.tupled)(Address.unapply)
 
-    assert("/cities/123?street=Baker+street&number=12a" == mstreet(CityStreetNumber(123, "Baker street", "12a")).render)
+      assert("http://mypage.com/countries/it/states/ts/cities/8?street=via+roma&number=12" ==
+        fullAdrs1.pathConverter.encode(Address("it", "ts", 8, "via roma", "12")).render)
 
-    /**
-     * Create a Unfiltered Intent
-     */
-
-    import org.obl.raz.unfiltered.Unfiltered._
-
-    val Address = fullAdrs
-
-    val myIntent: Plan.Intent = {
-      case GET(Address(country, state, cityId, street, streetNumber)) => Ok
+      assert(fullAdrs1.pathConverter.decodeFull(pathAdrs).toOption == Some(Address("it", "ts", 8, "via roma", "12")))
     }
-    ```
- 
-    
+      
+For more samples check
+
+[test folder](https://github.com/gdefacci/raz/tree/master/raz/src/test/scala/org/obl/raz)
+[sample project](https://github.com/gdefacci/briscola/tree/master/ddd-briscola-web/src/main/scala/org/obl/briscola/web)
+      
 Similar tools
 -------------
 
