@@ -1,231 +1,274 @@
 package org.obl.raz
 
 import scalaz.{ -\/, \/, \/- }
-import exceptions._
-
-import scala.language.higherKinds
+import shapeless._
 import scala.language.implicitConversions
+import scala.language.higherKinds
+import shapeless.ops.hlist.Tupler
 
-sealed trait Shape
-sealed trait SimpleShape
+case class MatchResult[+T](value: T, rest: Path)
 
-trait PathDecoder[T] {
-  import PathDecoder.{ Result }
+trait PathDecoderMixin[+T] {
 
-  type Decoder[T] <: PathDecoder[T]
-  def decode(path: Path): Result[T]
+  type DecoderType[T] <: PathDecoderMixin[T]
+
+  protected def createDecoder[T1](f: Path => Throwable \/ MatchResult[T1]): DecoderType[T1]
+
+  def decode(path: Path): Throwable \/ MatchResult[T]
 
   def decodeFull(path: Path): Throwable \/ T = {
     decode(path) match {
       case -\/(err) => -\/(err)
-      case \/-(pmr) if pmr.rest.isEmpty => \/-(pmr.value)
-      case \/-(pmr) => -\/(PathExpectationException(BasePath.empty, pmr.rest))
+      case \/-(pmr) if PathDecoder.isEmpty(pmr.rest) => \/-(pmr.value)
+      case \/-(pmr) => -\/(new PathExpectationException(Path, pmr.rest))
     }
   }
 
-  protected def createDecoder[T1](f: Path => Result[T1]): Decoder[T1]
-
-  def map[T1](f: T => T1): Decoder[T1] = createDecoder[T1] { i: Path =>
-    decode(i).map(_.mapValue(f))
+  def map[T1](f: T => T1): DecoderType[T1] = createDecoder[T1] { i: Path =>
+    decode(i).flatMap { mr => \/.fromTryCatchNonFatal(MatchResult[T1](f(mr.value), mr.rest)) }
+  }
+  
+  def unapply[I](i: I)(implicit pathExtractor: PathExtractor[I]): Option[T] = {
+    pathExtractor.apply(i).flatMap(p => decodeFull(p)).toOption
   }
 
-  def andThen[T1](f: PathMatchResult[T, Path] => Result[T1]): Decoder[T1] =
-    createDecoder { p =>
-      decode(p).flatMap(f)
+}
+
+trait PathDecoder[T, S <: PathPosition, E <: PathPosition] extends PathDecoderMixin[T] with Api.PathDecoder[T] {
+
+  val pathDecoder = this
+
+  type DecoderType[T1] = PathDecoder[T1, S, E]
+  protected def createDecoder[T1](f: Path => Throwable \/ MatchResult[T1]) = PathDecoder[T1, S, E](f)
+
+  def andThen[T1, S1 <: PathPosition, E1 <: PathPosition](d:PathDecoder[T1,S1,E1])(implicit pa:PathAppender[E,S1]) =
+    PathDecoder[T1, S, E1] { p =>
+      pathDecoder.decode(p).flatMap {
+        case MatchResult(v, rest)  => d.decode(rest)
+      }
     }
-
-  def flatMap[T1](f: T => PathDecoder[T1]): Decoder[T1] = createDecoder[T1] { i: Path =>
-    decode(i).flatMap { pmr =>
-      f(pmr.value).decode(pmr.rest)
-    }
-  }
-
-  def flatMapResult[T1](f: T => Throwable \/ T1): Decoder[T1] = {
-    createDecoder(p => decode(p).flatMap { pmr =>
-      f(pmr.value).map { v => PathMatchResult(v, pmr.rest) }
-    })
-  }
-
-  def orElse[ST >: T, T1 <: ST](d: => PathDecoder[T1]): PathDecoder[ST] = createDecoder[ST] { pth =>
+  
+  def orElse[ST >: T, T1 <: ST](d: => PathDecoder[T1, S, E]): PathDecoder[ST, S, E] = PathDecoder[ST, S, E] { pth =>
     decode(pth) match {
       case \/-(r) => \/-(r)
       case _ => d.decode(pth)
     }
   }
 
-  def unapply[U](p: U)(implicit extPathDecode: ext.ExtPathDecode[U]): Option[T] = {
-    this.decodeFull(extPathDecode(p)).toOption
+  def append[S1 <: PathPosition, E1 <: PathPosition](suffix: TPath[S1, E1])(implicit pathAppender: PathAppender[E, S1]): PathDecoder[T, S, E1] =
+    AroundPathDecoder(Path.empty, this, suffix)
+
+  def prepend[S2 <: PathPosition, E2 <: PathPosition](prefix: TPath[S2, E2])(implicit pathAppender: PathAppender[E2, S]): PathDecoder[T, S2, E] =
+    AroundPathDecoder(prefix, this, Path.empty)
+
+  def decoderAt(path: Path): DecoderType[T] with Api.PartialPathDecoder[T] = PartialPathDecoder(this, path)
+}
+
+final case class AroundPathDecoder[T, S0 <: PathPosition, E0 <: PathPosition, S <: PathPosition, E <: PathPosition, S1 <: PathPosition, E1 <: PathPosition](
+    prefix: TPath[S0, E0], decoder: PathDecoder[T, S, E], suffix: TPath[S1, E1]) extends PathDecoder[T, S0, E1] {
+
+  def decode(path: Path): Throwable \/ MatchResult[T] = {
+    for {
+      p1 <- DecodeUtils.subtract(path, prefix)
+      p2 <- decoder.decode(p1)
+      p3 <- DecodeUtils.subtract(p2.rest, suffix)
+    } yield MatchResult(p2.value, p3)
   }
 
-  lazy val Partial = PathDecoder.partialUnapply(decode(_))
+  override def map[T1](f: T => T1): PathDecoder[T1, S0, E1] =
+    new AroundPathDecoder(prefix, decoder.map(f), suffix)
+
+  override def append[S2 <: PathPosition, E2 <: PathPosition](suffix: TPath[S2, E2])(implicit pathAppender: PathAppender[E1, S2]): PathDecoder[T, S0, E2] =
+    AroundPathDecoder(prefix, decoder, this.suffix.append(suffix))
+
+  override def prepend[S2 <: PathPosition, E2 <: PathPosition](prefix: TPath[S2, E2])(implicit pathAppender: PathAppender[E2, S0]): PathDecoder[T, S2, E1] =
+    AroundPathDecoder(prefix.append(this.prefix), this, Path.empty)
 
 }
 
 object PathDecoder {
 
-  type Result[T] = Throwable \/ PathMatchResult[T, Path]
+  private[raz] def isEmpty(p: Path) = p.segments.isEmpty && p.params.isEmpty && p.fragment.isEmpty
 
-  def apply[T](f: Path => Result[T]): PathDecoder[T] =
-    new PathDecoder[T] {
-      type Decoder[T] = PathDecoder[T]
-      def decode(path: Path): Result[T] = f(path)
-      def createDecoder[T1](f: Path => Result[T1]): Decoder[T1] = PathDecoder.apply(f)
+  private[raz] def apply[T, S <: PathPosition, E <: PathPosition](f: Path => Throwable \/ MatchResult[T]) =
+    new PathDecoder[T, S, E] {
+      def decode(p: Path): Throwable \/ MatchResult[T] =
+        \/.fromTryCatchNonFatal(f(p)).flatMap(i => i)
     }
 
-  private def partialUnapply[T](f: Path => Result[T]): PathDecoder[T] =
-    new PathDecoder[T] {
-      type Decoder[T] = PathDecoder[T]
-      def decode(path: Path): Result[T] = f(path)
-      def createDecoder[T1](f: Path => Result[T1]): Decoder[T1] = PathDecoder.apply(f)
-      override def unapply[U](p: U)(implicit extPathDecode: ext.ExtPathDecode[U]): Option[T] = {
-        f(extPathDecode(p)).map(_.value).toOption
-      }
-    }
+  implicit def fromPathDecoderBuilder[T, S <: PathPosition, E <: PathPosition](pe: PathDecoder[T, S, E]): PathDecoderBuilder[PathDecoder[T, S, E] :: HNil, HNil, S, T, S, E] =
+    PathDecoderBuilder[PathDecoder[T, S, E] :: HNil, HNil, S, T, S, E](pe :: HNil, HNil, pe)
 
-  def fromPath(p: Path): PathDecoder[Path] = apply[Path] { p1: Path =>
-    PathUtils.subtract(p1, p).map { rest =>
-      \/-(PathMatchResult(p, rest))
-    }.getOrElse {
-      -\/(new exceptions.PathExpectationException(p, p1))
-    }
-  }
-
-  private[raz] def withSuffix[T](d: PathDecoder[T], sfx: Path) = {
-    PathDecoder[T] { p =>
-      d.decode(p).flatMap { pr =>
-        PathUtils.subtract(pr.rest, sfx) match {
-          case -\/(err) => -\/(err)
-          case \/-(newRest) => \/-(PathMatchResult(pr.value, newRest))
-        }
-      }
-    }
-  }
-
-  def prepend[T](sg: PathSg, pd: PathDecoder[T]) = PathDecoder[T] { p =>
-    if (p.path.path.startsWith(sg.path)) {
-      val seg = PathSg(p.path.path.drop(sg.path.length))
-      val pth = p.fragment match {
-        case None => RelativePath(seg, p.params)
-        case Some(frag) => RelativePath(seg, p.params, frag)
-      }
-      pd.decode(pth)
-    } else {
-      -\/(PathExpectationException(RelativePath(PathSg(Nil)), p))
-    }
-  }
-
-  def seq[T](dec: PathDecoder[T]): PathDecoder[Seq[T]] = {
-    PathDecoder[Seq[T]] { p: Path =>
-      var pth = p
-      val buf = collection.mutable.Buffer.empty[T]
-      var finished = pth.isEmpty
-      while (!finished) {
-        val ri = dec.decode(pth)
-        ri match {
-          case -\/(_) => finished = true
-          case \/-(v) => {
-            buf += v.value
-            pth = v.rest
-            finished = pth.isEmpty
-          }
-        }
-      }
-      \/-(PathMatchResult(buf, pth))
-    }
-  }
-
-  def opt[T](dec: PathDecoder[T]): PathDecoder[Option[T]] = {
-    PathDecoder[Option[T]] { pth: Path =>
+  def opt[T, S <: PathPosition, E <: PathPosition](dec: PathDecoder[T, S, E]): PathDecoder[Option[T], S, E] = {
+    PathDecoder[Option[T], S, E] { pth: Path =>
       val ri = dec.decode(pth)
       ri match {
-        case -\/(_) => \/-(PathMatchResult(None, pth))
-        case \/-(v) => \/-(PathMatchResult(Some(v.value), v.rest))
+        case -\/(_) => \/-(MatchResult(None, pth))
+        case \/-(v) => \/-(MatchResult(Some(v.value), v.rest))
       }
     }
   }
-
-  private def decodeUrl(str: String) = {
-    java.net.URLDecoder.decode(str.replace("+", "%2B"), "UTF-8").replace("%2B", "+").trim
+  
+  def schemAndAuthority(s:Option[Scheme], a:Option[Authority]) = PathDecoder[(Option[Scheme], Option[Authority]), PathPosition.Absolute, PathPosition.Segment] { p =>
+    if (p.scheme == s && p.authority == a) \/-(MatchResult(p.scheme -> p.authority, p.copy(scheme=None, authority = None))) 
+    else -\/(PathExpectationException(Path.copy(scheme=s, authority = a), p))
   }
-
-  lazy val stringSegment = PathDecoder[String] { p: Path =>
-    val pth = Path.ralativePath(p) //if (Path.baseOf(p).nonEmpty) Path.copy(p)(base = None) else p   
-    val psgs = pth.path.path
-    psgs.headOption match {
-      case None => -\/(EndOfPathException)
-      case Some(hd) => \/-(PathMatchResult(decodeUrl(hd), Path.copy(p)(path = PathSg(psgs.tail))))
+    
+  def segments(sgs:Seq[String]) = PathDecoder[Unit, PathPosition.Segment, PathPosition.Segment] { p:Path =>
+    if (p.authority.isEmpty && p.segments.startsWith(sgs)) \/-(MatchResult((), p.copy(segments = p.segments.drop(sgs.length))))
+    else -\/(PathExpectationException(Path.copy(segments = sgs), p))
+  }
+    
+  def params(pars: Seq[(String, Option[String])]) = PathDecoder[Seq[(String, Option[String])], PathPosition.Param, PathPosition.Param] { p: Path =>
+      if (!p.authority.isEmpty || !p.segments.isEmpty) -\/(new RuntimeException(s"expecting parameters got $p"))
+      
+      val matchParsIt = pars.iterator
+      var ok = true
+      var remPars = p.params
+      while (matchParsIt.hasNext && ok) {
+        val par = matchParsIt.next
+        val z: (Seq[(String, Option[String])], Option[(String, Option[String])]) = Nil -> None 
+        val (rpars, res) = remPars.foldLeft(z) { (acc1, rpar) =>
+          val (rpars, res) = acc1
+          res match {
+            case None if (rpar == par) => rpars -> Some(rpar)
+            case r => (rpars :+ rpar) -> r
+          }
+        } 
+        if (res.isEmpty) ok = false
+        else remPars = rpars
+      }
+      if (!ok) -\/(PathExpectationException(Path.copy(params = pars), p))
+      else \/-(MatchResult(pars, p.copy(params = remPars)))
     }
-  }
+  
+  def fragment(frg:Option[String]) = PathDecoder[Option[String], PathPosition.Fragment, PathPosition.Fragment] { p: Path =>
+    if (frg.isEmpty) \/-(MatchResult(None, p)) 
+    else if (p.fragment == frg) \/-(MatchResult(p.fragment, p.copy(fragment = None))) 
+    else -\/(PathExpectationException(Path.copy(fragment = frg), p))
+ }
+  
+  def path(p:Path):PathDecoder[Path, PathPosition.Absolute, PathPosition.Fragment] =  
+    schemAndAuthority(p.scheme, p.authority).andThen(
+        segments(p.segments)).andThen(
+            params(p.params)).andThen(
+                fragment(p.fragment)).map( x => p )
+  
 
-  def fromStringSegment[T](f: String => T) = stringSegment.flatMapResult { x => \/.fromTryCatchNonFatal(f(x)) }
+  object Segment {
 
-  lazy val intSegment = fromStringSegment(_.toInt)
-  lazy val longSegment = fromStringSegment(_.toLong)
-  lazy val booleanSegment = fromStringSegment(_.toBoolean)
-
-  def enumSegment[E <: Enumeration](e: E) = fromStringSegment(e.withName(_))
-
-  lazy val optStringParam = PathDecoder[(String, Option[String])] { p: Path =>
-    val pth = Path.ralativePath(p) //if (Path.baseOf(p).nonEmpty) Path.copy(p)(base = None) else p
-    if (pth.params.nonEmpty) -\/(MissingPathPartException(PathPart.ParamsPart, p))
-    else {
-      val qgs = pth.params
-      qgs.headOption match {
-        case None => -\/(EndOfPathException)
-        case Some(hd) => \/-(PathMatchResult(hd.name -> hd.value, Path.copy(p)(params = qgs.tail)))
+    val string = PathDecoder[String, PathPosition.Segment, PathPosition.Segment] { p: Path =>
+      p.segments.headOption match {
+        case None => -\/(NoMoreSegments)
+        case Some(hd) => \/-(MatchResult(DecodeUtils.replacePercentTriplets(hd), p.copy(segments = p.segments.tail)))
       }
     }
+
+    val int = string.map(_.toInt)
+    val long = string.map(_.toLong)
+    val boolean = string.map(_.toBoolean)
+
+    def enum[E <: Enumeration](e: E) = string.map(e.withName(_))
+
   }
 
-  lazy val stringParam = PathDecoder[(String, String)] { p =>
-    optStringParam.decode(p).flatMap {
-      case PathMatchResult((nm: String, Some(v)), rest) => \/-(PathMatchResult((nm, v), rest))
-      case PathMatchResult((nm: String, None), rest) => -\/(MissingPathPartException(PathPart.ParamValue(nm), rest))
-    }
-  }
+  object Param {
 
-  def fromStringParam[O](f: String => O) = stringParam.flatMapResult(p => \/.fromTryCatchNonFatal(f(p._2)).map(p._1 -> _))
-
-  lazy val intParam = fromStringParam(_.toInt)
-  lazy val longParam = fromStringParam(_.toLong)
-  lazy val booleanParam = fromStringParam(_.toBoolean)
-
-  def optStringParamValue(pred: QParamSg => Boolean, paramDescription: String) = PathDecoder[(String, Option[String])] { p: Path =>
-    val pth = Path.ralativePath(p) //if (Path.baseOf(p).nonEmpty) Path.copy(p)(base = None) else p
-    if (pth.params.isEmpty) -\/(MissingPathPartException(PathPart.ParamsPart, p))
-    else {
-      val rest = collection.mutable.Buffer.empty[QParamSg]
-      var resPar: Option[QParamSg] = None
-      p.params.foreach { par =>
-        if (resPar.isEmpty && pred(par)) resPar = Some(par)
-        else rest += par
-      }
-      resPar match {
-        case None => -\/(MissingPathPartException(PathPart.ParamValue(paramDescription), pth))
-        case Some(resPar) => \/-(PathMatchResult(resPar.name -> resPar.value, Path.copy(p)(params = rest)))
+    def apply(pred: (String, Option[String]) => Boolean) = PathDecoder[Option[String], PathPosition.Param, PathPosition.Param] { p: Path =>
+      val z: (Option[Option[String]], Seq[(String, Option[String])]) = None -> Nil
+      p.params.foldLeft(z) { (acc, par) =>
+        val (res, pars) = acc
+        res match {
+          case r @ Some(_) => r -> (pars :+ par)
+          case _ =>
+            if (pred(par._1, par._2)) (Some(par._2) -> pars) else (None -> (pars :+ par))
+        }
+      } match {
+        case (Some(r), pars) => \/-(MatchResult(r, p.copy(params = pars)))
+        case _ => \/-(MatchResult(None, p))
       }
     }
+
   }
 
-  def stringParamValue(pred: QParamSg => Boolean, paramDescription: String) = PathDecoder[(String, String)] { p =>
-    optStringParamValue(pred, paramDescription).decode(p).flatMap {
-      case PathMatchResult((nm, Some(v)), rest) => \/-(PathMatchResult((nm, v), rest))
-      case PathMatchResult((nm, _), rest) => -\/(MissingPathPartException(PathPart.ParamValue(nm), rest))
+  case class Param(name: String) {
+
+    val optString = Param((parName, value) => parName == name)
+
+    val string: PathDecoder[String, PathPosition.Param, PathPosition.Param] = optString.map(_.getOrElse(throw new MissingParameter(name)))
+
+    val int = string.map(_.toInt)
+    val long = string.map(_.toLong)
+    val boolean = string.map(_.toBoolean)
+
+    def enum[E <: Enumeration](e: E) = string.map(e.withName(_))
+
+  }
+
+  object Fragment {
+
+    val string = PathDecoder[String, PathPosition.Fragment, PathPosition.Fragment] { p: Path =>
+      p.fragment match {
+        case None => -\/(NoFragment)
+        case Some(hd) => \/-(MatchResult(hd, p.copy(fragment = None)))
+      }
+    }
+
+    val int = string.map(_.toInt)
+    val long = string.map(_.toLong)
+    val boolean = string.map(_.toBoolean)
+
+    def enum[E <: Enumeration](e: E) = string.map(e.withName(_))
+
+  }
+
+  implicit def hTupleDecoder[H <: HList, TUP, S <: PathPosition, E <: PathPosition](h: H)(implicit tpd:ToPathDecoder[H,TUP,S,E]): PathDecoder[TUP, S, E] =
+    tpd(h)
+}
+
+trait PathMatchDecoder extends PathDecoder[Path, PathPosition, PathPosition] with Api.PathMatchDecoder 
+
+object PathMatchDecoder {
+  def apply(pth:Path):PathMatchDecoder = apply(pth, pth)
+  
+  def apply(pth:Path, decodePath:Path) = new PathMatchDecoder {
+    lazy val path = pth
+    def decode(p: Path) = {
+      if (p == decodePath) \/-(MatchResult(decodePath, Path.empty))
+      else -\/(PathExpectationException(decodePath, p))
     }
   }
+}
 
-  def named[T](parName: String, f: String => T): PathDecoder[T] =
-    stringParamValue(_.name == parName, s"named $parName").map(_._2).flatMapResult { x => \/.fromTryCatchNonFatal(f(x)) }
+final case class PartialPathDecoder[T, S <: PathPosition, E <: PathPosition](fullPath: PathDecoder[T, S, E], prefix: Path) extends PathDecoder[T, S, E] with Api.PartialPathDecoder[T] {
 
-  lazy val stringParamValue = named(_: String, i => i)
-  lazy val intParamValue = named(_: String, _.toInt)
-  lazy val longParamValue = named(_: String, _.toLong)
-  lazy val booleanParamValue = named(_: String, _.toBoolean)
+  def decode(p: Path) = fullPath.decode(prefix.merge(p))
 
-  def enumParamValue[E <: Enumeration](e: E): String => PathDecoder[E#Value] = named(_: String, e.withName(_))
+}
 
-  //  implicit def apply[H <: Path, D](h: H)(implicit pathMatcher: PathMatcher[H, D]): PathDecoder[D] = {
-  //    pathMatcher.decoder(h)
-  //  }
+trait ToPathDecoder[H <: HList, T, S <: PathPosition, E <: PathPosition] {
+  def apply(h: H): PathDecoder[T, S, E]
+}
 
+object ToPathDecoder {
+
+  implicit def htuple[H <: HList, HR <: HList, TUP, S <: PathPosition, E <: PathPosition](
+      implicit hr: HPathDecoder[H, HR, S, E], 
+      tupler: Tupler.Aux[HR, TUP], 
+      gen: Generic.Aux[TUP, HR]) =
+        
+    new ToPathDecoder[H, TUP, S, E] {
+      def apply(h: H) = PathDecoder { (pth: Path) =>
+        hr.apply(h).apply(pth).map { mr =>
+          MatchResult(tupler.apply(mr.value), mr.rest)
+        }
+      }
+    }
+
+  implicit def htuple1[T, S <: PathPosition, E <: PathPosition] =
+    new ToPathDecoder[PathDecoder[T,S,E] :: HNil, T, S, E] {
+      def apply(h: PathDecoder[T,S,E] :: HNil): PathDecoder[T, S, E] = {
+        h.head
+      }
+    }
 }

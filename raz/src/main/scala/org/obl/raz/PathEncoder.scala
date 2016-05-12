@@ -1,102 +1,154 @@
 package org.obl.raz
 
-import scalaz.{-\/, \/, \/-}
-import exceptions._
-
+import scala.language.higherKinds
 import scala.language.implicitConversions
-import scala.language.higherKinds 
+import shapeless._
+import shapeless.ops.hlist.Tupler
 
-trait PathEncoder[T] extends (T => Path){
-  type Encoder[T] <: PathEncoder[T] 
+trait PathEncoderMixin[T, S <: PathPosition, E <: PathPosition] extends Api.PathEncoder[T] {
+
+  type EncoderType[T] <: PathEncoderMixin[T,S,E]
   
-  def encode(t:T):Path
-  final def apply(t:T) = encode(t)
-  
-  protected def createEncoder[T1](f:T1 => Path):Encoder[T1]
-  
-  def contramap[T1](f:T1 => T):Encoder[T1] = {
-    createEncoder[T1]((encode _) compose f)
+  protected def createEncoder[T1](kind: UriTemplate.Kind, f: T1 => TPath[S, E]): EncoderType[T1]
+
+  def encode(t: T): TPath[S, E]
+
+  private[raz] def kind: UriTemplate.Kind
+
+  def contramap[T1](f: T1 => T): EncoderType[T1] =
+    createEncoder[T1](kind, f.andThen(encode(_)))
+
+}
+
+sealed trait PathEncoder[T, S <: PathPosition, E <: PathPosition] extends PathEncoderMixin[T, S, E] {
+
+  type EncoderType[T1] = PathEncoder[T1, S, E]
+  protected def createEncoder[T1](kind: UriTemplate.Kind, f: T1 => TPath[S, E]) = PathEncoder(kind, f)
+
+  def append[S1 <: PathPosition, E1 <: PathPosition](suffix: TPath[S1, E1])(implicit pathAppender: PathAppender[E, S1]): PathEncoder[T, S, E1] =
+    AroundPathEncoder(Path.empty, this, suffix)
+
+  def prepend[S1 <: PathPosition, E1 <: PathPosition](prefix: TPath[S1, E1])(implicit pathAppender: PathAppender[E1, S]): PathEncoder[T, S1, E] =
+    AroundPathEncoder(prefix, this, Path.empty)
+
+}
+
+final case class AroundPathEncoder[T, S0 <: PathPosition, E0 <: PathPosition, S <: PathPosition, E <: PathPosition, S1 <: PathPosition, E1 <: PathPosition] private[raz] (
+    prefix: TPath[S0, E0], encoder: PathEncoder[T, S, E], suffix: TPath[S1, E1]) extends PathEncoder[T, S0, E1] {
+
+  lazy val kind = encoder.kind
+
+  def encode(t: T): TPath[S0, E1] = {
+    prefix.append(encoder.encode(t).append(suffix))
   }
+
+  override def contramap[T1](f: T1 => T): AroundPathEncoder[T1, S0, E0, S, E, S1, E1] =
+    AroundPathEncoder[T1, S0, E0, S, E, S1, E1](prefix, encoder.contramap[T1](f), suffix)
+
+  override def append[S2 <: PathPosition, E2 <: PathPosition](suffix: TPath[S2, E2])(implicit pathAppender: PathAppender[E1, S2]): PathEncoder[T, S0, E2] =
+    AroundPathEncoder(prefix, encoder, this.suffix.append(suffix))
+
+  override def prepend[S2 <: PathPosition, E2 <: PathPosition](prefix: TPath[S2, E2])(implicit pathAppender: PathAppender[E2, S0]): PathEncoder[T, S2, E1] =
+    AroundPathEncoder(prefix.append(this.prefix), encoder, suffix)
+
+}
+
+trait ToPathEncoder[-H <: HList, T, S <: PathPosition, E <: PathPosition] {
+  def apply(h: H): PathEncoder[T, S, E]
+}
+
+object ToPathEncoder {
+
+  implicit def htuple[H <: HList, HR <: HList, TUP, S <: PathPosition, E <: PathPosition](
+      implicit hr: HPathEncoder[H, HR, S, E], 
+      tupler: Tupler.Aux[HR, TUP], 
+      gen: Generic.Aux[TUP, HR]) =
+    new ToPathEncoder[H, TUP, S, E] {
+      def apply(h: H): PathEncoder[TUP, S, E] = {
+        val hrEnc = hr.apply(h)
+        val kind = hr.kind(h)
+        PathEncoder(kind, { (tup: TUP) =>
+          val h1 = gen.to(tup)
+          hrEnc.apply(h1)
+        })
+      }
+    }
+
+  implicit def htuple1[T, S <: PathPosition, E <: PathPosition] =
+    new ToPathEncoder[PathEncoder[T,S,E] :: HNil, T, S, E] {
+      def apply(h: PathEncoder[T,S,E] :: HNil): PathEncoder[T, S, E] = {
+        h.head
+      }
+    }
+
 }
 
 object PathEncoder {
-  def apply[T](f:T => Path):PathEncoder[T] = {
-    new PathEncoder[T] {
-      type Encoder[T] = PathEncoder[T] 
-      def encode(t:T) = f(t)
-      protected def createEncoder[T1](f:T1 => Path) = PathEncoder.apply[T1](f)
-    }
-  }
-  
-  def prepend[T](sg:PathSg, e:PathEncoder[T]):PathEncoder[T] = {
-    PathEncoder[T] { v =>
-      val r1 = e.encode(v)
-      Path(Path.baseOf(r1), sg.add(r1.path), r1.params, r1.fragment)
-    }
-  }
-  
-  def at[T](base:PathBase, e:PathEncoder[T]):PathEncoder[T] = {
-    PathEncoder[T] { v =>
-      val r1 = e.encode(v)
-      Path(Some(base), r1.path, r1.params, r1.fragment)
-    }
-  }
-  
-  def fromPath(p:Path):PathEncoder[Path] = apply[Path](p => p)
-  
-  def seq[T](enc:PathEncoder[T]):PathEncoder[Seq[T]] = {
-    PathEncoder[Seq[T]]( sq => PathUtils.mergeAll(sq.map(enc.encode(_))) )
-  }
-  
-  def opt[T](enc:PathEncoder[T]):PathEncoder[Option[T]] = {
-    PathEncoder[Option[T]]( sq => PathUtils.mergeAll(sq.map(enc.encode(_)).toSeq) )
-  }
-  
-  private[raz] def withSuffix[T](e:PathEncoder[T], sfx:Path) = {
-    PathEncoder[T]( v => PathUtils.merge( e.encode(v) ,sfx ))
-  }
-  
-  lazy val stringSegment = PathEncoder[String](sg => RelativePath(PathSg(sg)))
-  
-  def toStringSegment[T] = stringSegment.contramap { i:T => i.toString }
-  
-  lazy val intSegment = toStringSegment[Int]
-  lazy val longSegment = toStringSegment[Long]
-  lazy val booleanSegment = toStringSegment[Boolean]
-  
-  def enumSegment[E <: Enumeration] = toStringSegment[E#Value]
-  def enumValueSegment[V <: Enumeration#Value] = toStringSegment[V]
-  
-  lazy val optStringParam = PathEncoder[(String,Option[String])](sg => RelativePath(QParamSg(sg._1, sg._2) :: Nil))
-  lazy val stringParam = optStringParam.contramap { p:(String,String) => (p._1 -> Some(p._2)) }
-  
-  def toStringParam[I] = stringParam.contramap { i:(String, I) => i._1 -> i._2.toString }
-  
-  lazy val intParam = toStringParam[Int]
-  lazy val longParam = toStringParam[Long]
-  lazy val booleanParam = toStringParam[Boolean]
-  
-  def enumParam[E <: Enumeration] = toStringParam[E#Value]
-  def enumValueParam[V <: Enumeration#Value] = toStringParam[V]
 
-  def optStringParamValue(name:String) = PathEncoder[(Option[String])](sg => RelativePath(QParamSg(name, sg) :: Nil))
-  def stringParamValue(name:String) = optStringParamValue(name).contramap { p:String => Some(p) }
-
-  def toStringParam[I](name:String) = stringParamValue(name:String).contramap { i:I => i.toString }
-  
-  def intParamValue(name:String) = toStringParam[Int](name)
-  def longParamValue(name:String) = toStringParam[Long](name)
-  def booleanParamValue(name:String) = toStringParam[Boolean](name)
-  
-  def enumParamValue[E <: Enumeration](nm:String) = toStringParam[E#Value](nm)
-  def enumValueParamValue[V <: Enumeration#Value](nm:String) = toStringParam[V](nm:String)
-
-  lazy val stringFragment = PathEncoder[String](sg => RelativePath(fragment = sg))
-  
- implicit def apply[H <: HPath, P <: PathPosition, S <: P, E](h: H)(implicit hf: EncHPathF[H, E, BasePath[P, S]]): PathEncoder[E] = {
-    val e = hf.apply(h)
-    PathEncoder(e)
+  private[raz] def apply[T, S <: PathPosition, E <: PathPosition](k: UriTemplate.Kind, f: T => TPath[S, E]): PathEncoder[T, S, E] = new PathEncoder[T, S, E] {
+    def encode(t: T): TPath[S, E] = f(t)
+    lazy val kind = k
   }
 
-  
+  implicit def toPathEncoderBuilder[T, S <: PathPosition, E <: PathPosition](pe: PathEncoder[T, S, E]): PathEncoderBuilder[PathEncoder[T, S, E] :: HNil, HNil, S, T, S, E] =
+    PathEncoderBuilder[PathEncoder[T, S, E] :: HNil, HNil, S, T, S, E](pe :: HNil, HNil, pe)
+
+  implicit def hTupleEncoder[H <: HList, TUP, S <: PathPosition, E <: PathPosition](h: H)(implicit tpe:ToPathEncoder[H,TUP,S,E]) = {
+    tpe(h)
+  }  
+    
+  object Segment {
+
+    private def create[T](f: T => String) = PathEncoder[T, PathPosition.Segment, PathPosition.Segment](UriTemplate.Segment, t => Path / f(t))
+
+    val string = create[String](sg => sg)
+    val int = create[Int](sg => sg.toString)
+    val long = create[Long](sg => sg.toString)
+    val boolean = create[Boolean](sg => sg.toString)
+
+  }
+
+  case class Param(name: String) {
+
+    private def create[T](f: T => (String, Option[String])) = PathEncoder[T, PathPosition.Param, PathPosition.Param](UriTemplate.ParamWithName(name), { t =>
+      f(t) match {
+        case (nm, None) => Path && nm
+        case (nm, Some(v)) => Path && (nm, v)
+      }
+    })
+
+    val string = create[String](par => name -> Some(par))
+    val int = create[Int](par => name -> Some(par.toString))
+    val long = create[Long](par => name -> Some(par.toString))
+    val boolean = create[Boolean](par => name -> Some(par.toString))
+
+  }
+
+  object Param {
+
+    private def create[T](f: T => (String, Option[String])) = PathEncoder[T, PathPosition.Param, PathPosition.Param](UriTemplate.Param, { t =>
+      f(t) match {
+        case (nm, None) => Path && nm
+        case (nm, Some(v)) => Path && (nm, v)
+      }
+    })
+
+    val string = create[(String, String)](par => par._1 -> Some(par._2))
+    val int = create[(String, Int)](par => par._1 -> Some(par._2.toString))
+    val long = create[(String, Long)](par => par._1 -> Some(par._2.toString))
+    val boolean = create[(String, Boolean)](par => par._1 -> Some(par._2.toString))
+
+  }
+
+  object Fragment {
+    private def create[T](f: T => String) = PathEncoder[T, PathPosition.Fragment, PathPosition.Fragment](UriTemplate.Fragment, t => Path &# f(t))
+
+    val string = create[String](sg => sg)
+    val int = create[Int](sg => sg.toString)
+    val long = create[Long](sg => sg.toString)
+    val boolean = create[Boolean](sg => sg.toString)
+
+  }
+
 }
+

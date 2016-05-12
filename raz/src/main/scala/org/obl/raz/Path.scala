@@ -1,181 +1,70 @@
 package org.obl.raz
 
-import scala.language.implicitConversions
-import scala.language.higherKinds
+import scalaz.{ \/ => \/ }
 
-sealed trait Path extends PathRenderer with ext.ExtUnapply { 
+sealed case class Path(scheme: Option[Scheme], authority: Option[Authority], segments: Seq[String], params: Seq[(String, Option[String])], fragment: Option[String]) {
 
-  def path: PathSg
-  def params: Seq[QParamSg]
-  def fragment: Option[String]
+  lazy val render = PathRenderer.render(this)
 
-  def isEmpty = path.isEmpty && params.isEmpty && fragment.isEmpty
-
-  override def hashCode = Path.baseOf(this).hashCode + path.hashCode * 11 + params.hashCode * 17 + fragment.hashCode * 23
-
-  override def equals(o: Any): Boolean = o match {
-    case othr: Path => Path.baseOf(this) == Path.baseOf(othr) && path == othr.path && params.toSet == othr.params.toSet && fragment == othr.fragment
-    case x => false
-  }
-
-  override final def toString = render
+  def merge(p1: Path): Path =
+    Path(scheme.orElse(p1.scheme), authority.orElse(p1.authority), segments ++ p1.segments, params ++ p1.params, fragment.orElse(p1.fragment))
 
 }
 
-object Path  {
-  
-  def baseOf(path:Path):Option[PathBase] = 
-    path match {
-    case p : BasePath[_,_] => p.pathBase
-  }
+object Path extends Path(None, None, Nil, Nil, None) with RootPathBuilder[TPath] with TPathPathBuilder with RootPathEncoderBuilder
+    with RootPathDecoderBuilder
+    with RootPathCodecBuilder
+    with RootPathConverterBuilder {
 
-   def unapply(p:Path) = Some(baseOf(p), p.path, p.params, p.fragment)
- 
-  def ralativePath(p:Path):RelativePath[_,_] =
-    p match {
-     case p:RelativePath[_,_] => p
-     case x => p.fragment match {
-       case None => RelativePath(p.path, p.params)
-       case Some(f) => RelativePath(p.path, p.params, f)
-     }
-    }
-   
-  def copy(p:Path)(path:PathSg = p.path, params:Seq[QParamSg] = p.params, fragment:Option[String] = p.fragment):Path =
-    BasePath(baseOf(p), path, params, fragment)
+  protected val self = this
 
-  def apply(pathBase:Option[PathBase], path:PathSg, params:Seq[QParamSg], fragment:Option[String]):Path =
-    BasePath(pathBase, path, params, fragment)
+  type SegmentsPath = TPath[PathPosition.Segment, PathPosition.Segment]
+
+  def isEmpty(p: Path) = p.authority.isEmpty && p.segments.isEmpty && p.params.isEmpty && p.fragment.isEmpty
+
+  def empty[P <: PathPosition] = new TPath[P, P](None, None, Nil, Nil, None)
+
+  def fromJavaUrl(u: java.net.URL): Throwable \/ Path = DecodeUtils.fromJavaUrl(u) 
     
-  implicit def toPathDecode(path: Path): PathDecoder[Path] = {
-    PathDecoder( (p:Path) => PathUtils.subtract(p,path).map( rest => PathMatchResult(path, rest) ) )
-  }
+  def fromJavaUri(uri: java.net.URI): Throwable \/ Path = DecodeUtils.fromJavaUri(uri)
   
-//  def renderPrepend(pg:PathSg, pth:Path):Path = {
-//	  val osg = pth.path
-//    val sgs = pg.add(pth.path)
-//    val renderedPath = Path.baseOf(pth) match {
-//      case None => new RelativePath(sgs, pth.params, pth.fragment)
-//      case Some(host) => new AbsolutePath(host, sgs, pth.params, pth.fragment)
-//    }
-//    Path.baseOf(pth) match {
-//      case None => new RelativePath(osg, pth.params, pth.fragment) {
-//        override def render = renderedPath.render
-//      }
-//      case Some(host) => new AbsolutePath(host, osg, pth.params, pth.fragment) {
-//        override def render = renderedPath.render
-//      }
-//    }
-//  }
+  def toJavaUrl(p: Path): java.net.URL =
+    new java.net.URI(p.render).toURL()
+
 }
 
-sealed trait PathPosition
-sealed abstract class BasePosition extends PathPosition  
-sealed abstract class SegmentPosition extends BasePosition 
-sealed abstract class ParamPosition extends SegmentPosition 
-sealed abstract class FragmentPosition extends ParamPosition 
+trait TPathPathBuilder {
+  protected def self: Path
+  protected def create[S1 <: PathPosition, E1 <: PathPosition](
+    scheme: Option[Scheme] = None,
+    authority: Option[Authority] = None,
+    segments: Seq[String] = Nil,
+    params: Seq[(String, Option[String])] = Nil,
+    fragment: Option[String] = None): TPath[S1, E1] = {
+    new TPath[S1, E1](scheme.orElse(self.scheme), authority.orElse(self.authority), self.segments ++ segments, self.params ++ params, fragment.orElse(self.fragment))
+  }
 
-sealed abstract class BasePath[P <: PathPosition,S <: P](private [raz] val pathBase:Option[PathBase], val path:PathSg, val params:Seq[QParamSg], val fragment:Option[String]) extends Path {
-  def at[R](base:PathBase)(implicit atAux:AtAux[BasePath[P,S], R]):R = atAux.apply(this)(base)
-} 
-
-class RelativePath[P <: SegmentPosition,S <: P] private [raz] (path:PathSg, params:Seq[QParamSg], fragment:Option[String]) extends BasePath[P,S](None, path, params, fragment) {
-  
-  def at(base:PathBase):AbsolutePath[S] = new AbsolutePath[S](base, path, params, fragment) 
 }
 
-class AbsolutePath[S <: BasePosition] private [raz] (val base:PathBase, path:PathSg, params:Seq[QParamSg], fragment:Option[String]) extends BasePath[BasePosition, S](Some(base), path, params, fragment)
+trait PathBuilderMixin[S <: PathPosition, E <: PathPosition] extends PathBuilder[S, E, TPath]
+  with TPathPathBuilder
+  with TPathEncoderBuilder[S, E]
+  with TPathDecoderBuilder[S, E]
+  with TPathCodecBuilder[S, E]
+  with TPathConverterBuilder[S, E]
 
-object BasePath {
-  
-  private [raz] def empty[P <: PathPosition, S <: P] = BasePath[P, S](None, PathSg.empty, Nil, None)
-  
-  def sum[P1 <: PathPosition, S1 <: P1, P2 <: S1, S2 <: P2](p1:BasePath[P1,S1], p2:BasePath[P2,S2]):BasePath[P1,S2] = {
-    BasePath(Path.baseOf(p1).orElse(Path.baseOf(p2)), p1.path.add(p2.path), p1.params ++ p2.params, p1.fragment.orElse(p2.fragment)  )
-  }
-  
-  private [raz] def apply[P <: PathPosition, S <: P](pathBase:Option[PathBase], path:PathSg, params:Seq[QParamSg], fragment:Option[String]):BasePath[P,S] = {
-    val r = pathBase match {
-      case Some(b) => fragment match { 
-        case None => AbsolutePath(b, path, params)
-        case Some(f) => AbsolutePath(b, path, params, f)
-      }
-      case None => fragment match {
-        case None => RelativePath(path, params)
-        case Some(f) => RelativePath(path, params, f)
-      }
-    }
-    r.asInstanceOf[BasePath[P,S]]
-  }
-  
-  private [raz] def cast[P <: PathPosition, S <: P](p:Path):BasePath[P,S] = {
-    BasePath[P,S](Path.baseOf(p), p.path, p.params, p.fragment)
-  }
+sealed class TPath[S <: PathPosition, E <: PathPosition] private[raz] (
+  scheme: Option[Scheme],
+  authority: Option[Authority],
+  segments: Seq[String],
+  params: Seq[(String, Option[String])],
+  fragment: Option[String]) extends Path(scheme, authority, segments, params, fragment)
+    with PathBuilderMixin[S, E] {
+  protected val self: TPath[S, E] = this
 
+  def append[S1 <: PathPosition, E1 <: PathPosition](p1: TPath[S1, E1]): TPath[S, E1] =
+    new TPath[S, E1](scheme.orElse(p1.scheme), authority.orElse(p1.authority), segments ++ p1.segments, params ++ p1.params, fragment.orElse(p1.fragment))
 
-  implicit def toPathSegmentAdder[P >: SegmentPosition <: PathPosition](path:BasePath[P, SegmentPosition])  = new PathSegmentAdder[P] {
-    lazy val segmentAdderSelf = path
-  } 
-  
-  implicit def toParamAdder[P >: ParamPosition <: PathPosition, A >: ParamPosition <: P](path:BasePath[P,A]) = new ParamAdder[P,A] {
-    def paramAdderSelf = path
-  }
-  
-  implicit def toFragmentAdder[P >: FragmentPosition <: PathPosition, S >: ParamPosition <: P](path:BasePath[P,S]) = new FragmentAdder[P] {
-    def fragmentAdderSelf = path
-  }
-
-  implicit def apply[P <: PathPosition, S <: P, R[_,_,_]](h:BasePath[P,S])(implicit pathConversion:ext.PathConversion[R]):R[Path,Path,Path] = {
-    pathConversion(h)
-  }
-  
-  implicit def toPathDecode[P <: PathPosition, S <: P, D](h: BasePath[P,S])(implicit pathMatcher: PathMatcher[Path, D]): PathDecoder[D] = {
-    pathMatcher.decoder(h)
-  }
-}
-
-object RelativePath extends RelativePath[SegmentPosition, SegmentPosition](PathSg.empty, Nil, None) with EmptyPathAdder {
-  
-  def apply(path:PathSg) = 
-    new RelativePath[SegmentPosition, SegmentPosition](path, Nil, None) 
-    
-  def apply(path:PathSg, params:Seq[QParamSg]) = 
-   new RelativePath[SegmentPosition, ParamPosition](path, params, None) 
-
-  def apply(path:PathSg, params:Seq[QParamSg], fragment:String) = 
-    new RelativePath[SegmentPosition, FragmentPosition](path, params, Some(fragment)) 
-
-  def apply(params:Seq[QParamSg]) = 
-    new RelativePath[ParamPosition, ParamPosition](PathSg(Nil), params, None)  
-    
-  def apply(params:Seq[QParamSg], fragment:String) = 
-    new RelativePath[ParamPosition, FragmentPosition](PathSg(Nil), params, Some(fragment)) 
-  
-  def apply(fragment:String) = 
-    new RelativePath[ParamPosition, FragmentPosition](PathSg(Nil), Nil, Some(fragment)) 
-    
-}
-
-object AbsolutePath {
-  
-  def apply(base:PathBase) = 
-    new AbsolutePath[SegmentPosition](base, PathSg.empty, Nil, None) 
-  
-  def apply(base:PathBase, path:PathSg) = 
-    new AbsolutePath[SegmentPosition](base, path, Nil, None) 
-    
-  def apply(base:PathBase, path:PathSg, params:Seq[QParamSg]) = 
-    new AbsolutePath[ParamPosition](base, path, params, None)
-
-  def apply(base:PathBase, path:PathSg, params:Seq[QParamSg], fragment:String) = 
-    new AbsolutePath[FragmentPosition](base, path, params, Some(fragment))
-
-  def apply(base:PathBase, params:Seq[QParamSg]) = 
-    new AbsolutePath[ParamPosition](base, PathSg(Nil), params, None)
-    
-  def apply(base:PathBase, params:Seq[QParamSg], fragment:String) = 
-    new AbsolutePath[FragmentPosition](base, PathSg(Nil), params, Some(fragment))
-  
-  def apply(base:PathBase, fragment:String) = 
-    new AbsolutePath[FragmentPosition](base, PathSg(Nil), Nil, Some(fragment))
-    
+  def withAuthority(authority: Authority): TPath[PathPosition.Absolute, E] = new TPath[PathPosition.Absolute, E](scheme, Some(authority), segments, params, fragment)
+  def withScheme(scheme: Scheme): TPath[PathPosition.Absolute, E] = new TPath[PathPosition.Absolute, E](Some(scheme), authority, segments, params, fragment)
 }

@@ -1,139 +1,124 @@
 package org.obl.raz
 
+import shapeless._
+import shapeless.ops.hlist.Tupler
 import scalaz.{ -\/, \/, \/- }
 import scala.language.implicitConversions
-import scala.annotation.unchecked.uncheckedVariance
-import scala.language.existentials
 
-class PathConverter[D, E, UT,+P <: PathPosition, S <: PathPosition] private (d: Path => Throwable \/ PathMatchResult[D, Path], e: E => Path, ute: UT => UriTemplate) extends PathDecoder[D] with PathEncoder[E] with UriTemplateEncoder[UT] {
-  def decode(path: Path) = d(path)
-  def encode(t: E): Path = e(t)
-  def toUriTemplate(t: UT) = ute(t)
+case class PathConverter[TD, TE, TU, S <: PathPosition, E <: PathPosition](fullPathConverter:Option[PathConverter[TD,TE,TU,S,E]], decoder: PathDecoder[TD, S, E], encoder: PathEncoder[TE, S, E], uriTemplateEncoder: UriTemplateEncoder[TU, S, E])
+    extends PathEncoderMixin[TE, S, E] with PathDecoderMixin[TD] with Api.PathConverter[TD, TE, TU] {
+  
+  lazy val pathConverter = this
+  lazy val fullPath = fullPathConverter.getOrElse(this)
+  
+  private[raz] lazy val kind = encoder.kind
+  def decode(path: Path): Throwable \/ MatchResult[TD] = decoder.decode(path)
+  def encode(t: TE): TPath[S, E] = encoder.encode(t)
+  def encodeUriTemplate(t: TU): UriTemplate = uriTemplateEncoder.encodeUriTemplate(t)
 
-  type Decoder[T] = PathConverter[T, E, UT, P @uncheckedVariance, S]
-  type Encoder[T] = PathConverter[D, T, UT, P @uncheckedVariance, S]
-  type UTEncoder[T] = PathConverter[D, E, T, P @uncheckedVariance, S]
+  type DecoderType[T1] = PathConverter[T1, TE, TU, S, E]
+  protected def createDecoder[T1](f: Path => Throwable \/ MatchResult[T1]):PathConverter[T1, TE, TU, S, E] = 
+    new PathConverter[T1, TE, TU, S, E](fullPathConverter.map(_.createDecoder(f)), PathDecoder(f), encoder, uriTemplateEncoder)
 
-  protected def createDecoder[T1](f: Path => Throwable \/ PathMatchResult[T1, Path]) = PathConverter[T1, E, UT, P, S](PathDecoder(f), e, ute)
-  protected def createEncoder[T1](f: T1 => Path) = PathConverter[D, T1, UT, P, S](PathDecoder(d), f, ute)
-  protected def createUriTemplateEncoder[T1](f: T1 => UriTemplate) = PathConverter[D, E, T1, P, S](PathDecoder(d), e, UriTemplateEncoder.apply[T1](f).toUriTemplate(_))
+  type EncoderType[T1] = PathConverter[TD, T1, TU, S, E]
+  protected def createEncoder[T1](kind: org.obl.raz.UriTemplate.Kind, f: T1 => TPath[S, E]):PathConverter[TD,T1,TU,S,E] = PathConverter(fullPathConverter.map(_.createEncoder[T1](kind, f)), decoder, PathEncoder(kind, f), uriTemplateEncoder)
 
-  private[raz] def addPart(sg: PathSg):PathConverter[D, E, UT, P, SegmentPosition] = addPath(RelativePath(sg))
-  private[raz] def addPart(sg: QParamSg):PathConverter[D, E, UT, P, ParamPosition] = addPath(RelativePath(sg :: Nil))
-  private[raz] def addFragmentPart(f: String):PathConverter[D, E, UT, P, FragmentPosition] = addPath(RelativePath(fragment = f))
+  def append[S1 <: PathPosition, E1 <: PathPosition](suffix: TPath[S1, E1])(implicit pathAppender: PathAppender[E, S1]): PathConverter[TD, TE, TU, S, E1] =
+    PathConverter(fullPathConverter.map(_.append(suffix)), decoder.append(suffix), encoder.append(suffix), uriTemplateEncoder.append(suffix))
 
-  private[raz] def addPath[A1 <: PathPosition](p: BasePath[_, A1]):PathConverter[D, E, UT, P, A1] = {
-    PathConverter[D, E, UT, P, A1](PathDecoder.withSuffix(this, p), PathEncoder.withSuffix(this, p), UriTemplateEncoder.withSuffix(this, p))
+  def prepend[S2 <: PathPosition, E2 <: PathPosition](prefix: TPath[S2, E2])(implicit pathAppender: PathAppender[E2, S]): PathConverter[TD, TE, TU, S2, E] =
+    PathConverter(fullPathConverter.map(_.prepend(prefix)), decoder.prepend(prefix), encoder.prepend(prefix), uriTemplateEncoder.prepend(prefix))
+
+  object UriTemplate {
+
+    def contramap[T1](f: T1 => TU): PathConverter[TD, TE, T1, S, E] = PathConverter(fullPathConverter.map(_.UriTemplate.contramap(f)), decoder, encoder, uriTemplateEncoder.contramap(f))
+
   }
 
-  def caseMap[T1](tupled: D => T1, caseUnapply: T1 => Option[E]): PathConverter[T1, T1, UT, P, S] = {
-    PathConverter(
-        PathDecoder(d.andThen(_.flatMap( p => \/.fromTryCatchNonFatal(p.mapValue(tupled) ))))
-        , e.compose((t1: T1) => caseUnapply(t1).get), ute)
-  }
+  def decoderAt(p: Path) = PathConverter[TD,TE,TU,S,E](fullPathConverter.orElse(Some(this)), decoder.decoderAt(p), encoder, uriTemplateEncoder)
+  
+  def uriTemplateEncoderAt(p: Path) = PathConverter[TD,TE,TU,S,E](fullPathConverter.orElse(Some(this)), decoder, encoder, uriTemplateEncoder.uriTemplateEncoderAt(p))
+  
+  def caseMap[C](mf:TD => C)(cf:C => Option[TE]):PathConverter[C,C,TU,S,E] = 
+    PathConverter[C,C,TU,S,E](fullPathConverter.map(c => c.caseMap[C](mf)(cf)), decoder.map(mf), encoder.contramap( (a:C) => cf(a).get ), uriTemplateEncoder)
   
 }
 
+/*
+case class HPathConverter[H <: HList, HR <: HList, S <: PathPosition, E <: PathPosition](decoder: HPathDecoder[H, HR, S, E], encoder: HPathEncoder[H, HR, S, E], uriTemplateEncoder: HUriTemplateEncoder[H, HR, S, E])
+
+object HPathConverter {
+
+  def apply[H <: HList, HR <: HList, S <: PathPosition, E <: PathPosition](implicit enc: HPathEncoder[H, HR, S, E], dec: HPathDecoder[H, HR, S, E], ut: HUriTemplateEncoder[H, HR, S, E]): HPathConverter[H, HR, S, E] = {
+    HPathConverter[H, HR, S, E](dec, enc, ut)
+  }
+
+}
+*/
 object PathConverter {
-
-  def apply[D, E, UT, P <: PathPosition, S <: PathPosition](d: PathDecoder[D], e: PathEncoder[E], ute: UriTemplateEncoder[UT]): PathConverter[D, E, UT, P, S] = {
-    new PathConverter[D, E, UT, P, S](d.decode _, e.encode _, ute.toUriTemplate _)
-  }
   
-  def apply[D, E, UT, P <: PathPosition, S <: PathPosition](d: Path => Throwable \/ PathMatchResult[D, Path], e: E => Path, ute: UT => UriTemplate): PathConverter[D, E, UT, P, S] = {
-    PathConverter[D, E, UT, P, S](d, e, ute)
-  }
-  
-  def fromPath(p:Path) = apply(PathDecoder.fromPath(p), PathEncoder.fromPath(p), UriTemplateEncoder { p:Path => UriTemplate(p) })
-  
-  def fromPath(decPath:Path, encPath:Path) = 
-    apply(PathDecoder.fromPath(decPath), PathEncoder.fromPath(encPath), UriTemplateEncoder { p:Path => UriTemplate(encPath) })
-  
-  def apply[H <: HPath, P <: PathPosition, S <: P, D, E, UT](h: H)(implicit pathMatcher: PathMatcher[H, D], hf: EncHPathF[H, E, BasePath[P, S]], uthf: UTHPathF[H, UT]): PathConverter[D, E, UT, P, S] = {
-    val d = pathMatcher.decoder(h)
-    val e = hf.apply(h)
-    val ute = uthf.apply(h)
-    PathConverter(d, PathEncoder(e), UriTemplateEncoder(ute))
-  }
-
-  def opt[D, E, UT, P <: PathPosition, S <: PathPosition](pc: PathConverter[D, E, UT, P, S]): PathConverter[Option[D], Option[E], Option[UT], P, S] = {
-    PathConverter(PathDecoder.opt(pc), PathEncoder.opt(pc), UriTemplateEncoder.opt(pc))
-  }
-
-  def seq[D, E, UT, P <: PathPosition, S <: PathPosition](pc: PathConverter[D, E, UT, P, S]): PathConverter[Seq[D], Seq[E], UT, P, S] = {
-    PathConverter[Seq[D], Seq[E], UT, P, S](PathDecoder.seq(pc), PathEncoder.seq(pc), UriTemplateEncoder.expand(pc))
-  }
-  
-  def prependEncoders[D, E, UT,P <: PathPosition, S <: PathPosition](sg:PathSg, pc:PathConverter[D,E,UT,P,S]) = {
-    PathConverter[D,E,UT,P,S](
-      PathDecoder(pc.decode(_)),
-      PathEncoder.prepend(sg, PathEncoder(pc.encode _)),
-      UriTemplateEncoder.prepend(sg, UriTemplateEncoder(pc.toUriTemplate _))
-    )
-  }
-  
-  def encodersAt[D, E, UT,P <: PathPosition, S <: PathPosition](host:PathBase, pc:PathConverter[D,E,UT,P,S]) = {
-    PathConverter[D,E,UT,P,S](
-      PathDecoder(pc.decode(_)),
-      PathEncoder.at(host, PathEncoder(pc.encode _)),
-      UriTemplateEncoder.at(host, UriTemplateEncoder(pc.toUriTemplate _))
-    )
-  }
-
-
-  private class PathConverterFactory[P <: PathPosition, S <: PathPosition] {
-    def create[D, E, UT](d: PathDecoder[D], e: PathEncoder[E], ute: UriTemplateEncoder[UT]): PathConverter[D, E, UT, P, S] = {
-      PathConverter[D, E, UT, P, S](d, e, ute)
-    }
-  }
-  
-  object Segment {
-    def factory[D,E,UT] = new PathConverterFactory[SegmentPosition, SegmentPosition]().create[D,E,UT](_,_,_)
-
-    val string = factory(PathDecoder.stringSegment, PathEncoder.stringSegment, UriTemplateEncoder.Simple.segment)
-    val int = factory(PathDecoder.intSegment, PathEncoder.intSegment, UriTemplateEncoder.Simple.segment)
-    val long = factory(PathDecoder.longSegment, PathEncoder.longSegment, UriTemplateEncoder.Simple.segment)
-    val boolean = factory(PathDecoder.booleanSegment, PathEncoder.booleanSegment, UriTemplateEncoder.Simple.segment)
+  def apply[TD, TE, TU, S <: PathPosition, E <: PathPosition](decoder: PathDecoder[TD, S, E], encoder: PathEncoder[TE, S, E], uriTemplateEncoder: UriTemplateEncoder[TU, S, E]) =
+    new PathConverter[TD, TE, TU, S, E](None, decoder, encoder, uriTemplateEncoder)
     
-    def enumSegment[E <: Enumeration](e:E) = factory(PathDecoder.enumSegment(e), PathEncoder.enumSegment[E], UriTemplateEncoder.Simple.segment)
+
+  implicit def hTupleConverter1[H <: HList, TD,TE, UT, S <: PathPosition, E <: PathPosition](h:H)
+    (implicit tcn:ToPathConverter[H,TD,TE,UT,S,E]): PathConverter[TD, TE, UT, S, E] = tcn(h)
+
+  implicit def toPathConverterBuilder[TD, TE, UT, S <: PathPosition, E <: PathPosition](pe: PathConverter[TD, TE, UT, S, E]): PathConverterBuilder[PathConverter[TD, TE, UT, S, E] :: HNil, HNil, S, TD, TE, UT, S, E] =
+    PathConverterBuilder[PathConverter[TD, TE, UT, S, E] :: HNil, HNil, S, TD, TE, UT, S, E](pe :: HNil, HNil, pe)
+
+  object Segment {
+
+    private val uriTemplateEncoder = UriTemplateEncoder[String, PathPosition.Segment, PathPosition.Segment](t => UriTemplate / UriTemplate.PlaceHolder(t))
+
+    val string = PathConverter(PathDecoder.Segment.string, PathEncoder.Segment.string, uriTemplateEncoder)
+    val int = PathConverter(PathDecoder.Segment.int, PathEncoder.Segment.int, uriTemplateEncoder)
+    val long = PathConverter(PathDecoder.Segment.long, PathEncoder.Segment.long, uriTemplateEncoder)
+    val boolean = PathConverter(PathDecoder.Segment.boolean, PathEncoder.Segment.boolean, uriTemplateEncoder)
+
   }
 
-  object Param {
-    def factory[D,E,UT] = new PathConverterFactory[ParamPosition, ParamPosition].create[D,E,UT](_,_,_)
-    def withNamefactory[D,E,UT](name:String) = new PathConverterFactory[ParamPosition, ParamPosition].create[D,E,UT](_,_,_)
+  case class Param(name: String) {
 
-    val string = factory(PathDecoder.stringParam, PathEncoder.stringParam, UriTemplateEncoder.Simple.param)
-    val int = factory(PathDecoder.intParam, PathEncoder.intParam, UriTemplateEncoder.Simple.param)
-    val long = factory(PathDecoder.longParam, PathEncoder.longParam, UriTemplateEncoder.Simple.param)
-    val boolean = factory(PathDecoder.booleanParam, PathEncoder.booleanParam, UriTemplateEncoder.Simple.param)
+    private val uriTemplateEncoder = UriTemplateEncoder[String, PathPosition.Param, PathPosition.Param](t => UriTemplate && (name, UriTemplate.PlaceHolder(t)))
 
-    def string(parName: String): PathConverter[String, String, String, ParamPosition, ParamPosition] =
-      withNamefactory(parName)(
-        PathDecoder.stringParamValue(parName),
-        PathEncoder.stringParamValue(parName),
-        UriTemplateEncoder.Simple.paramNamed(parName))
+    val string = PathConverter(PathDecoder.Param(name).string, PathEncoder.Param(name).string, uriTemplateEncoder)
+    val int = PathConverter(PathDecoder.Param(name).int, PathEncoder.Param(name).int, uriTemplateEncoder)
+    val boolean = PathConverter(PathDecoder.Param(name).boolean, PathEncoder.Param(name).boolean, uriTemplateEncoder)
 
-    def int(parName: String): PathConverter[Int, Int, String, ParamPosition, ParamPosition] =
-      withNamefactory(parName)(
-        PathDecoder.intParamValue(parName),
-        PathEncoder.intParamValue(parName),
-        UriTemplateEncoder.Simple.paramNamed(parName))
-
-    def long(parName: String): PathConverter[Long, Long, String, ParamPosition, ParamPosition] =
-      withNamefactory(parName)(
-        PathDecoder.longParamValue(parName),
-        PathEncoder.longParamValue(parName),
-        UriTemplateEncoder.Simple.paramNamed(parName))
-
-    def boolean(parName: String): PathConverter[Boolean, Boolean, String, ParamPosition, ParamPosition] =
-      withNamefactory(parName)(
-        PathDecoder.booleanParamValue(parName),
-        PathEncoder.booleanParamValue(parName),
-        UriTemplateEncoder.Simple.paramNamed(parName))
-
-        
-    def enum[E <: Enumeration](e:E, parName:String) = 
-      withNamefactory(parName)(PathDecoder.enumParamValue(e)(parName), PathEncoder.enumParamValue[E](parName), UriTemplateEncoder.Simple.paramNamed(parName))    
   }
 
+  object Fragment {
+
+    private val uriTemplateEncoder = UriTemplateEncoder[String, PathPosition.Fragment, PathPosition.Fragment](t => UriTemplate &# UriTemplate.PlaceHolder(t))
+
+    val string = PathConverter(PathDecoder.Fragment.string, PathEncoder.Fragment.string, uriTemplateEncoder)
+    val int = PathConverter(PathDecoder.Fragment.int, PathEncoder.Fragment.int, uriTemplateEncoder)
+    val boolean = PathConverter(PathDecoder.Fragment.boolean, PathEncoder.Fragment.boolean, uriTemplateEncoder)
+
+  }
+
+}
+
+trait ToPathConverter[H <: HList, TD, TE, TU, S <: PathPosition, E <: PathPosition] {
+  def apply(h: H): PathConverter[TD, TE, TU, S, E]
+}
+
+object ToPathConverter {
+  
+   implicit def htuple[H <: HList, TD, TE, UT, S <: PathPosition, E <: PathPosition]
+    (implicit
+        topd:ToPathDecoder[H, TD, S,E],
+        tope:ToPathEncoder[H, TE, S,E],
+        toue:ToUriTemplateEncoder[H, UT, S,E]) =
+    new ToPathConverter[H, TD, TE, UT, S, E] {
+      def apply(h: H) = PathConverter[TD, TE, UT, S, E](topd(h), tope(h), toue(h))
+    }
+  
+  implicit def htuple1[TD, TE, TU, S <: PathPosition, E <: PathPosition] =
+    new ToPathConverter[PathConverter[TD, TE, TU, S, E] :: HNil, TD, TE, TU, S, E] {
+      def apply(h: PathConverter[TD, TE, TU, S, E] :: HNil): PathConverter[TD, TE, TU, S, E] = {
+        h.head
+      }
+    }
 }

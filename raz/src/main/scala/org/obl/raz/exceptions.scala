@@ -1,24 +1,12 @@
 package org.obl.raz
 
-object exceptions {
+final case class PathExpectationException(expected: Path, actual: Path) extends Exception(s"expecting $expected, but the $actual has been encoutered")
+final case object NoMoreSegments extends Exception("expecting more segments")
+final case class MissingParameter(name:String) extends Exception(s"cant find parameter $name")
+final case class ExpectingSegment(name:String, actual:String) extends Exception(s"expecting segment $name got $actual")
+final case object NoFragment extends Exception("expecting fragment")
+/*
+final case class AuthorityMatchError(expected:Option[SchemeAndAuthority], actual:Option[SchemeAndAuthority]) extends 
+  Exception(expected.map(e => s"expecting authority ${e.render} got ${actual.map(_.render)}").getOrElse(s"invalid auhtority :${actual.map(_.render)}"))
 
-  case object EndOfPathException extends Exception
-
-  def invalidExpectationMsg(part: String, actual: Path) = s"expecting $part, but the ${actual.render} has been encoutered"
-
-  final case class PathExpectationException(expected: Path, actual: Path) extends Exception(invalidExpectationMsg(s"path ${expected.render}", actual))
-
-  sealed trait PathPart
-
-  object PathPart {
-    case object SegmentPart extends PathPart
-    case object ParamsPart extends PathPart
-    case object FragmentPart extends PathPart
-    final case class ParamValue(name: String) extends PathPart
-    final case class Param(description: String) extends PathPart
-  }
-
-  final case class MissingPathPartException(part: PathPart, actual: Path) extends Exception(s"part $part is missing")
-
-  
-}
+*/

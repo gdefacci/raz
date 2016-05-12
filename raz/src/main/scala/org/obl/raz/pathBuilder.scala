@@ -1,71 +1,205 @@
 package org.obl.raz
 
-import Path.baseOf
+import scala.language.higherKinds
+import shapeless._
+import shapeless.ops.hlist.IsHCons
+import org.obl.raz.PathConverter.Fragment
 
-trait BasePathSegmentAdder[P >: SegmentPosition <: PathPosition] {
-  protected def segmentAdderSelf:BasePath[P, SegmentPosition] 
+trait PathBuilder[S <: PathPosition, E <: PathPosition, P[_ <: PathPosition,_ <: PathPosition]] {
   
-  def add(sg:String):BasePath[P, SegmentPosition] = BasePath[P, SegmentPosition](baseOf(segmentAdderSelf), segmentAdderSelf.path.add(sg), segmentAdderSelf.params, segmentAdderSelf.fragment)
-  def / (sg:String) = add(sg)
+  protected def create[S1 <: PathPosition, E1 <: PathPosition](
+		  scheme:Option[Scheme] = None, 
+      authority:Option[Authority] = None, 
+      segments:Seq[String] = Nil, 
+      params:Seq[(String,Option[String])] = Nil, 
+      fragment:Option[String] = None):P[S1, E1]
   
-  def add[D,E,UT,P1 >: SegmentPosition <: P, S <: SegmentPosition](pf: PathConverter[D,E,UT,P1, S]) = HPathConsFactory[P1].create(HPathNil(segmentAdderSelf), pf)
-  def /[D,E,UT,P1 >: SegmentPosition <: P, S <: SegmentPosition](pf: PathConverter[D,E,UT,SegmentPosition,S])  = add(pf)
+   def / (sg:String)(implicit appender:PathAppender[E, PathPosition.Segment]) = 
+    create[S,PathPosition.Segment](segments = Seq(sg))
   
-} 
-
-trait PathSegmentAdder[P >: SegmentPosition <: PathPosition] extends BasePathSegmentAdder[P] {
+  def && (name:String, value:String)(implicit appender:PathAppender[E, PathPosition.Param]) = 
+    create[S,PathPosition.Param](params  = Seq(name -> Some(value)))
   
-  def append[P1 <: P, PA <: P1](p:BasePath[P1, PA]) =
-    BasePath[P, PA](baseOf(segmentAdderSelf), PathSg(segmentAdderSelf.path.path ++ p.path.path), segmentAdderSelf.params ++ p.params, p.fragment)
+  def && (name:String)(implicit appender:PathAppender[E, PathPosition.Param]) = 
+    create[S,PathPosition.Param](params  = Seq(name -> None))
+  
+  def &# (frag:String)(implicit appender:PathAppender[E, PathPosition.Fragment]) = 
+    create[S,PathPosition.Fragment](fragment = Some(frag))
     
-  def ++ [P1  <: P, PA <: P1](p:BasePath[P1, PA]) = append[P1,PA](p)
+  def at(scheme:Scheme, authority:Authority) = 
+    create[PathPosition.Absolute, E](scheme = Some(scheme), authority = Some(authority))
+}
+
+trait RootPathBuilder[P[_ <: PathPosition,_ <: PathPosition]] {
   
-  def append[H <: HPath, Out <: HPath](p:H)(implicit happ:HAppend[HPathNil[P, SegmentPosition], H, Out]) =
-    happ.concat(HPathNil(segmentAdderSelf), p)
+  protected def create[S1 <: PathPosition, E1 <: PathPosition](
+      scheme:Option[Scheme] = None, 
+      authority:Option[Authority] = None, 
+      segments:Seq[String] = Nil, 
+      params:Seq[(String,Option[String])] = Nil, 
+      fragment:Option[String] = None):P[S1, E1]
   
-  def ++ [H <: HPath, Out <: HPath](p:H)(implicit happ:HAppend[HPathNil[P, SegmentPosition], H, Out]) = append[H,Out](p)  
+   def / (sg:String)(implicit appender:PathAppender[PathPosition.Segment, PathPosition.Segment]) = 
+    create[PathPosition.Segment,PathPosition.Segment](segments = Seq(sg))
+  
+  def && (name:String, value:String)(implicit appender:PathAppender[PathPosition.Param, PathPosition.Param]) = 
+    create[PathPosition.Param,PathPosition.Param](params  = Seq(name -> Some(value)))
+  
+  def && (name:String)(implicit appender:PathAppender[PathPosition.Param, PathPosition.Param]) = 
+    create[PathPosition.Param,PathPosition.Param](params  = Seq(name -> None))
+  
+  def &# (frag:String)(implicit appender:PathAppender[PathPosition.Param, PathPosition.Fragment]) = 
+    create[PathPosition.Fragment,PathPosition.Fragment](fragment = Some(frag))
     
 }
 
-trait BaseParamAdder[P >: ParamPosition <: PathPosition, S <: P ] {
+trait TPathEncoderBuilder[S <: PathPosition, E <: PathPosition] { 
+  
+  protected def self:TPath[S,E]
+  
+  protected def createEncoderBuilder[T1, S1 <:PathPosition, E1 <: PathPosition](sg:PathEncoder[T1, S1, E1])
+    (implicit pathAppender: PathAppender[E, S1]) =
+      PathEncoder.toPathEncoderBuilder( sg.prepend(self) )
 
-  protected def paramAdderSelf:BasePath[P,S]
+  def / [T1, S1 >: PathPosition.Segment <:PathPosition, E1 <: PathPosition](sg:PathEncoder[T1, S1, E1])
+    (implicit pathAppender: PathAppender[E, S1]):PathEncoderBuilder[PathEncoder[T1, S, E1] :: HNil, HNil, S, T1, S, E1] = 
+      createEncoderBuilder(sg)
   
-  def addParam(nm:String, value:String) = BasePath[P,ParamPosition](baseOf(paramAdderSelf), paramAdderSelf.path, paramAdderSelf.params ++ Seq(QParamSg(nm, value)), paramAdderSelf.fragment)
-  def && (nm:String, value:String) = addParam(nm, value)
+  def && [T1, E1 <: PathPosition](sg:PathEncoder[T1, PathPosition.Param, E1])
+    (implicit pathAppender:PathAppender[E, PathPosition.Param]):PathEncoderBuilder[PathEncoder[T1, S, E1] :: HNil, HNil, S, T1, S, E1] = 
+      createEncoderBuilder(sg)
+
+  def &# [T1](sg:PathEncoder[T1, PathPosition.Fragment, PathPosition.Fragment])
+    (implicit pathAppender:PathAppender[E, PathPosition.Fragment]):PathEncoderBuilder[PathEncoder[T1, S, PathPosition.Fragment] :: HNil, HNil, S, T1, S, PathPosition.Fragment] = 
+      createEncoderBuilder(sg)
+}
+
+trait TPathDecoderBuilder[S <: PathPosition, E <: PathPosition] { 
+
+  protected def self:TPath[S,E]
+  def pathMatchDecoder : PathMatchDecoder = PathMatchDecoder(self)
   
-  def addParam[D,E,UT,P1 >: ParamPosition <: P, S1 <: ParamPosition](pf: PathConverter[D,E,UT,P1,S1]) = 
-    HPathConsFactory[P1].create(HPathNil[P, S](paramAdderSelf), pf)
-  def &&[D,E,UT,P1 >: ParamPosition <: P, S1 <: ParamPosition](pf: PathConverter[D,E,UT,ParamPosition,S1])  = addParam(pf)
+  protected def createDecoderBuilder[T1, S1 <:PathPosition, E1 <: PathPosition](sg:PathDecoder[T1, S1, E1])
+    (implicit pathAppender: PathAppender[E, S1]) =
+      PathDecoder.fromPathDecoderBuilder( sg.prepend(self) )
+
+  def / [T1, S1 >: PathPosition.Segment <:PathPosition, E1 <: PathPosition](sg:PathDecoder[T1, S1, E1])
+    (implicit pathAppender: PathAppender[E, S1]):PathDecoderBuilder[PathDecoder[T1, S, E1] :: HNil, HNil, S, T1, S, E1] = 
+      createDecoderBuilder(sg)
+  
+  def && [T1, E1 <: PathPosition](sg:PathDecoder[T1, PathPosition.Param, E1])
+    (implicit pathAppender:PathAppender[E, PathPosition.Param]):PathDecoderBuilder[PathDecoder[T1, S, E1] :: HNil, HNil, S, T1, S, E1] = 
+      createDecoderBuilder(sg)
+
+  def &# [T1](sg:PathDecoder[T1, PathPosition.Fragment, PathPosition.Fragment])
+    (implicit pathAppender:PathAppender[E, PathPosition.Fragment]):PathDecoderBuilder[PathDecoder[T1, S, PathPosition.Fragment] :: HNil, HNil, S, T1, S, PathPosition.Fragment] = 
+      createDecoderBuilder(sg)
   
 }
 
-trait ParamAdder[P >: ParamPosition <: PathPosition, S <: P ] extends BaseParamAdder[P,S] {
+trait TPathCodecBuilder[S <: PathPosition, E <: PathPosition] { 
+
+  protected def self:TPath[S,E]
+
+  protected def createCodecBuilder[TD1, TE1, S1 <:PathPosition, E1 <: PathPosition](sg:PathCodec[TD1, TE1, S1, E1])
+    (implicit pathAppender: PathAppender[E, S1]):PathCodecBuilder[PathCodec[TD1, TE1, S, E1] :: HNil, HNil, S, TD1, TE1, S, E1] = {
+    PathCodec.toPathCodecBuilder( sg.prepend(self) )  
+  }
   
-  def append[P1 <: S, PA <: P1](p:BasePath[P1, PA]) =
-    BasePath[P1, PA](baseOf(paramAdderSelf), PathSg(paramAdderSelf.path.path ++ p.path.path), paramAdderSelf.params ++ p.params, p.fragment)
-    
-  def ++ [P1 <: S, PA <: P1](p:BasePath[P1, PA]) = append[P1,PA](p)
+  def / [TD1, TE1, S1 >: PathPosition.Segment <:PathPosition, E1 <: PathPosition](sg:PathCodec[TD1, TE1, S1, E1])
+    (implicit pathAppender: PathAppender[E, S1]):PathCodecBuilder[PathCodec[TD1, TE1, S, E1] :: HNil, HNil, S, TD1, TE1, S, E1] = 
+      createCodecBuilder(sg)
   
-  def append[H <: HPath, Out <: HPath](p:H)(implicit happ:HAppend[HPathNil[P,S], H, Out]) =
-    happ.concat(HPathNil(paramAdderSelf), p)
+  def && [TD1, TE1, E1 <: PathPosition](sg:PathCodec[TD1, TE1, PathPosition.Param, E1])
+    (implicit pathAppender:PathAppender[E, PathPosition.Param]):PathCodecBuilder[PathCodec[TD1, TE1, S, E1] :: HNil, HNil, S, TD1, TE1, S, E1] = 
+      createCodecBuilder(sg)
+
+  def &# [TD1, TE1](sg:PathCodec[TD1, TE1, PathPosition.Fragment, PathPosition.Fragment])
+    (implicit pathAppender:PathAppender[E, PathPosition.Fragment]):PathCodecBuilder[PathCodec[TD1, TE1, S, PathPosition.Fragment] :: HNil, HNil, S, TD1, TE1, S, PathPosition.Fragment] = 
+      createCodecBuilder(sg)
+}
+
+trait TPathConverterBuilder[S <: PathPosition, E <: PathPosition] { 
+
+  protected def self:TPath[S,E]
   
-  def ++ [H <: HPath, Out <: HPath](p:H)(implicit happ:HAppend[HPathNil[P,S], H, Out]) = append[H,Out](p)
+  protected def createConverterBuilder[TD1, TE1, UT, S1 <:PathPosition, E1 <: PathPosition](sg:PathConverter[TD1, TE1, UT, S1, E1])
+    (implicit pathAppender: PathAppender[E, S1]):PathConverterBuilder[PathConverter[TD1, TE1, UT, S, E1] :: HNil, HNil, S, TD1, TE1, UT, S, E1] = {
+    PathConverter.toPathConverterBuilder( sg.prepend(self) )  
+  }
+
+  def / [TD1, TE1, UT, S1 >: PathPosition.Segment <:PathPosition, E1 <: PathPosition](sg:PathConverter[TD1, TE1, UT, S1, E1])
+    (implicit pathAppender: PathAppender[E, S1]):PathConverterBuilder[PathConverter[TD1, TE1, UT, S, E1] :: HNil, HNil, S, TD1, TE1, UT, S, E1] = 
+      createConverterBuilder(sg)
+  
+  def && [TD1, TE1, UT, E1 <: PathPosition](sg:PathConverter[TD1, TE1,UT, PathPosition.Param, E1])
+    (implicit pathAppender:PathAppender[E, PathPosition.Param]):PathConverterBuilder[PathConverter[TD1, TE1, UT, S, E1] :: HNil, HNil, S, TD1, TE1, UT, S, E1] = 
+      createConverterBuilder(sg)
+
+  def &# [TD1, TE1, UT](sg:PathConverter[TD1, TE1, UT, PathPosition.Fragment, PathPosition.Fragment])
+    (implicit pathAppender:PathAppender[E, PathPosition.Fragment]):PathConverterBuilder[PathConverter[TD1, TE1, UT, S, PathPosition.Fragment] :: HNil, HNil, S, TD1, TE1, UT, S, PathPosition.Fragment] = 
+      createConverterBuilder(sg)
 
 }
 
-trait FragmentAdder[P >: FragmentPosition <: PathPosition]  {
+trait RootPathEncoderBuilder { 
+
+  import PathPosition._
+  import PathEncoder.toPathEncoderBuilder
+
+  def / [T1, S1 >: Segment <:PathPosition, E1 <: PathPosition](sg:PathEncoder[T1, S1, E1]):PathEncoderBuilder[PathEncoder[T1, S1, E1] :: HNil, HNil, S1, T1, S1, E1] = 
+      toPathEncoderBuilder(sg)
   
-  def fragmentAdderSelf:BasePath[P,_]
-  
-  def addFragment(frg:String) = BasePath[P, FragmentPosition](baseOf(fragmentAdderSelf), fragmentAdderSelf.path, fragmentAdderSelf.params, Some(frg))
-  def &# (str:String) = addFragment(str)
+  def && [T1, E1 <: PathPosition](sg:PathEncoder[T1, Param, E1]):PathEncoderBuilder[PathEncoder[T1, Param, E1] :: HNil, HNil, Param, T1, Param, E1] = 
+      toPathEncoderBuilder(sg)
+
+  def &# [T1](sg:PathEncoder[T1, Fragment, Fragment]):PathEncoderBuilder[PathEncoder[T1, Fragment, Fragment] :: HNil, HNil, Fragment, T1, PathPosition.Fragment, PathPosition.Fragment] = 
+     toPathEncoderBuilder(sg)
 }
 
+trait RootPathDecoderBuilder { 
 
-trait EmptyPathAdder extends BasePathSegmentAdder[SegmentPosition] with BaseParamAdder[ParamPosition,ParamPosition] {
+  import PathPosition._
+  import PathDecoder.fromPathDecoderBuilder
   
-  protected def segmentAdderSelf:BasePath[SegmentPosition, SegmentPosition] = BasePath[SegmentPosition, SegmentPosition](None, PathSg.empty, Nil, None)
-  protected def paramAdderSelf:BasePath[ParamPosition, ParamPosition] = BasePath[ParamPosition, ParamPosition](None, PathSg.empty, Nil, None)
+  def / [T1, S1 >: Segment <:PathPosition, E1 <: PathPosition](sg:PathDecoder[T1, S1, E1]):PathDecoderBuilder[PathDecoder[T1, S1, E1] :: HNil, HNil, S1, T1, S1, E1] = 
+      fromPathDecoderBuilder(sg)
+  
+  def && [T1, E1 <: PathPosition](sg:PathDecoder[T1, Param, E1]):PathDecoderBuilder[PathDecoder[T1, Param, E1] :: HNil, HNil, Param, T1, Param, E1] = 
+      fromPathDecoderBuilder(sg)
+
+  def &# [T1](sg:PathDecoder[T1, Fragment, Fragment]):PathDecoderBuilder[PathDecoder[T1, Fragment, Fragment] :: HNil, HNil, Fragment, T1, Fragment, Fragment] = 
+      fromPathDecoderBuilder(sg)
+  
+}
+
+trait RootPathCodecBuilder { 
+
+  import PathPosition._
+  import PathCodec.toPathCodecBuilder
+  
+  def / [TD1, TE1, S1 >: Segment <:PathPosition, E1 <: PathPosition](sg:PathCodec[TD1, TE1, S1, E1]):PathCodecBuilder[PathCodec[TD1, TE1, S1, E1] :: HNil, HNil, S1, TD1, TE1, S1, E1] = 
+      toPathCodecBuilder(sg)
+  
+  def && [TD1, TE1, E1 <: PathPosition](sg:PathCodec[TD1, TE1, Param, E1]):PathCodecBuilder[PathCodec[TD1, TE1, Param, E1] :: HNil, HNil, Param, TD1, TE1, Param, E1] = 
+      toPathCodecBuilder(sg)
+
+  def &# [TD1, TE1](sg:PathCodec[TD1, TE1, Fragment, Fragment]):PathCodecBuilder[PathCodec[TD1, TE1, Fragment, Fragment] :: HNil, HNil, Fragment, TD1, TE1, Fragment, Fragment] = 
+      toPathCodecBuilder(sg)
+}
+
+trait RootPathConverterBuilder { 
+
+  import PathPosition._
+  import PathConverter.toPathConverterBuilder
+
+  def / [TD1, TE1, UT, E1 <: PathPosition](sg:PathConverter[TD1, TE1, UT, Segment, E1]):PathConverterBuilder[PathConverter[TD1, TE1, UT, Segment, E1] :: HNil, HNil, Segment, TD1, TE1, UT, Segment, E1] = 
+      toPathConverterBuilder(sg)
+  
+  def && [TD1, TE1, UT, E1 <: PathPosition](sg:PathConverter[TD1, TE1,UT, Param, E1]):PathConverterBuilder[PathConverter[TD1, TE1, UT, Param, E1] :: HNil, HNil, Param, TD1, TE1, UT, Param, E1] = 
+      toPathConverterBuilder(sg)
+
+  def &# [TD1, TE1, UT](sg:PathConverter[TD1, TE1, UT, Fragment, Fragment]):PathConverterBuilder[PathConverter[TD1, TE1, UT, Fragment, Fragment] :: HNil, HNil, Fragment, TD1, TE1, UT, Fragment, Fragment] = 
+      toPathConverterBuilder(sg)
   
 }
