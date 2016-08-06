@@ -53,8 +53,6 @@ class EncoderTest extends FunSuite with Matchers {
   }
   
   test("encoder contramap 1") {
-//    import PathEncoder.{Segment, Param, Fragment}
-    
     val cn1 = (Segment.string / Segment.int).pathEncoder
     
     val cn2 = cn1 / Segment.boolean
@@ -77,9 +75,9 @@ class EncoderTest extends FunSuite with Matchers {
     val cn4a = HTTP("home.com") / cn1 / Segment.boolean 
     val cn4b = HTTP("home.com") / cn1
     
-    val enc4a = cn4a.pathEncoder.contramap(Cl1.unapply(_:Cl1).get)
-    val enc4b = cn4b.pathEncoder.contramap(Cl2.unapply(_:Cl2).get)
-    val enc4 = cn4.pathEncoder.contramap(Cl2.unapply(_:Cl2).get)
+    val enc4a = cn4a.contramap(Cl1.unapply(_:Cl1).get)
+    val enc4b = cn4b.contramap(Cl2.unapply(_:Cl2).get)
+    val enc4 = cn4.contramap(Cl2.unapply(_:Cl2).get)
     
     assert(enc4.encode(Cl2("1" -> 2)) === (Path / "1" / "2"))
     assert(enc4a.encode(Cl1("1" -> 2, true)) === (HTTP("home.com") / "1" / "2" / "true"))
@@ -90,38 +88,19 @@ class EncoderTest extends FunSuite with Matchers {
   
   test("encoder append") {
     
-    assert( (Segment.string.append(Path / "sg2")).encode("segment") === (Path / "segment" / "sg2"))
-    assert( (Segment.string.append(Path && "sg2")).encode("segment") === (Path / "segment" && "sg2"))
+    assert( (Segment.string / "sg2").encode("segment") === (Path / "segment" / "sg2"))
+    assert( (Segment.string && "sg2").encode("segment") === (Path / "segment" && "sg2"))
     
     """PathEncoder.Param.string.append(Path / "sg2")""" shouldNot compile
     
-    assert( (Param("par").string.append(Path && "sg2")).encode("value1") === (Path && ("par", "value1") && "sg2"))
+    assert( (Param("par").string && "sg2").encode("value1") === (Path && ("par", "value1") && "sg2"))
     
-    """PathEncoder.Fragment.string.append(Path / "sg2")""" shouldNot compile
-    """PathEncoder.Fragment.string.append(Path && "sg2")""" shouldNot compile
-    """PathEncoder.Fragment.string.append(Path &# "sg2")""" shouldNot compile
+    """PathEncoder.Fragment.string / "sg2"""" shouldNot compile
+    """PathEncoder.Fragment.string && "sg2"""" shouldNot compile
+    """PathEncoder.Fragment.string &# "sg2"""" shouldNot compile
     
   }
   
-  test("encoder prepend") {
-    
-    assert( (Segment.string.prepend(Path / "sg2")).encode("segment") === (Path / "sg2" / "segment"))
-
-    """PathEncoder.Segment.string.prepend(Path && "sg2")""" shouldNot compile
-    """PathEncoder.Segment.string.prepend(Path &# "sg2")""" shouldNot compile
-    
-    assert( (Param("par").string.prepend(Path / "sg2")).encode("v1") === ( Path / "sg2" && ("par", "v1")))
-    
-    assert( (Param("par").string.prepend(Path && "sg2")).encode("value1") === (Path && "sg2" && ("par", "value1")))
-    
-    """PathEncoder.Param("par").string.prepend(Path &# "sg2")""" shouldNot compile
-    
-    assert((Fragment.string.prepend(Path / "sg2")).encode("v1") === (Path / "sg2" &# "v1"))
-    assert((Fragment.string.prepend(Path && "sg2")).encode("v1") === (Path && "sg2" &# "v1"))
-    """(PathEncoder.Fragment.string.prepend(Path &# "sg2")).encode("v1")""" shouldNot compile
-    
-  }
-
   test("path render") {
    
     def checkSymmetric(p:Path) = assert(Path.fromJavaUrl(new java.net.URI(p.render).toURL() ).toOption.get == p)

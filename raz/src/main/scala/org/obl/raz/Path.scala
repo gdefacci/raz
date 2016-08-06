@@ -1,6 +1,7 @@
 package org.obl.raz
 
 import scalaz.{ \/ => \/ }
+import language.implicitConversions
 
 sealed case class Path(scheme: Option[Scheme], authority: Option[Authority], segments: Seq[String], params: Seq[(String, Option[String])], fragment: Option[String]) {
 
@@ -11,19 +12,23 @@ sealed case class Path(scheme: Option[Scheme], authority: Option[Authority], seg
 
 }
 
-object Path extends Path(None, None, Nil, Nil, None) with RootPathBuilder[TPath] with TPathPathBuilder with RootPathEncoderBuilder
-    with RootPathDecoderBuilder
-    with RootPathCodecBuilder
-    with RootPathConverterBuilder {
-
-  protected val self = this
+object Path extends TPath[PathPosition.Segment, PathPosition.Segment](None, None, Nil, Nil, None) { 
 
   type SegmentsPath = TPath[PathPosition.Segment, PathPosition.Segment]
-
+  
   def isEmpty(p: Path) = p.authority.isEmpty && p.segments.isEmpty && p.params.isEmpty && p.fragment.isEmpty
 
   def empty[P <: PathPosition] = new TPath[P, P](None, None, Nil, Nil, None)
 
+  def segments(sgs:String*):TPath[PathPosition.Segment,PathPosition.Segment] = 
+    TPath.apply[PathPosition.Segment,PathPosition.Segment](segments=sgs)
+  
+  def params(sgs:(String, Option[String])*):TPath[PathPosition.Param,PathPosition.Param] = 
+    TPath.apply[PathPosition.Param,PathPosition.Param](params=sgs)
+    
+  def fragment(frag:String):TPath[PathPosition.Fragment,PathPosition.Fragment] = 
+    TPath.apply[PathPosition.Fragment,PathPosition.Fragment](fragment=Some(frag))  
+    
   def fromJavaUrl(u: java.net.URL): Throwable \/ Path = DecodeUtils.fromJavaUrl(u) 
     
   def fromJavaUri(uri: java.net.URI): Throwable \/ Path = DecodeUtils.fromJavaUri(uri)
@@ -33,36 +38,31 @@ object Path extends Path(None, None, Nil, Nil, None) with RootPathBuilder[TPath]
 
 }
 
-trait TPathPathBuilder {
-  protected def self: Path
-  protected def create[S1 <: PathPosition, E1 <: PathPosition](
+object TPath {
+  
+  private[raz] def apply[S1 <: PathPosition, E1 <: PathPosition](
     scheme: Option[Scheme] = None,
     authority: Option[Authority] = None,
     segments: Seq[String] = Nil,
     params: Seq[(String, Option[String])] = Nil,
     fragment: Option[String] = None): TPath[S1, E1] = {
-    new TPath[S1, E1](scheme.orElse(self.scheme), authority.orElse(self.authority), self.segments ++ segments, self.params ++ params, fragment.orElse(self.fragment))
+    new TPath[S1, E1](scheme, authority, segments, params, fragment)
   }
 
+  
+  implicit def toPathOps[S <: PathPosition, E <: PathPosition](p:TPath[S,E]) = new PathOps(p)
 }
-
-trait PathBuilderMixin[S <: PathPosition, E <: PathPosition] extends PathBuilder[S, E, TPath]
-  with TPathPathBuilder
-  with TPathEncoderBuilder[S, E]
-  with TPathDecoderBuilder[S, E]
-  with TPathCodecBuilder[S, E]
-  with TPathConverterBuilder[S, E]
 
 sealed class TPath[S <: PathPosition, E <: PathPosition] private[raz] (
   scheme: Option[Scheme],
   authority: Option[Authority],
   segments: Seq[String],
   params: Seq[(String, Option[String])],
-  fragment: Option[String]) extends Path(scheme, authority, segments, params, fragment)
-    with PathBuilderMixin[S, E] {
+  fragment: Option[String]) extends Path(scheme, authority, segments, params, fragment) {
+//    with PathBuilderMixin[S, E] {
   protected val self: TPath[S, E] = this
 
-  def append[S1 <: PathPosition, E1 <: PathPosition](p1: TPath[S1, E1]): TPath[S, E1] =
+  def append[S1 <: PathPosition, E1 <: PathPosition](p1: TPath[S1, E1])(implicit appender:PathAppender[E, S1]): TPath[S, E1] =
     new TPath[S, E1](scheme.orElse(p1.scheme), authority.orElse(p1.authority), segments ++ p1.segments, params ++ p1.params, fragment.orElse(p1.fragment))
 
   def withAuthority(authority: Authority): TPath[PathPosition.Absolute, E] = new TPath[PathPosition.Absolute, E](scheme, Some(authority), segments, params, fragment)

@@ -14,8 +14,6 @@ object Api {
 
     def unapply[I](i: I)(implicit pathExtractor: PathExtractor[I]): Option[T] 
 
-    def decoderAt(path:Path):PathDecoder[T] with PartialPathDecoder[T]
-
   }
   
   trait PathMatchDecoder extends PathDecoder[Path] {
@@ -43,8 +41,6 @@ object Api {
     
     def caseMap[C](mf:TD => C)(cf:C => Option[TE]):PathCodec[C,C]
 
-    def decoderAt(path:Path):PathCodec[TD,TE]
-
   }
   
   object PathCodec {
@@ -57,8 +53,6 @@ object Api {
     
     def fullPath:PathConverter[TD,TE,UT]
     
-    def decoderAt(path:Path):PathConverter[TD,TE,UT]
-    
     def caseMap[C](mf:TD => C)(cf:C => Option[TE]):PathConverter[C,C,UT]
   }
 
@@ -68,9 +62,5 @@ object Api {
     def fullPath:PathDecoder[T]
     
   }
-  /*
-  trait PartialPathDecoderCodec[TD,TE] extends PartialPathDecoder[TD] with PathCodec[TD,TE]
-  */
-  
   
 }

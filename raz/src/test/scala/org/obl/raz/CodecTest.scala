@@ -155,19 +155,18 @@ class CodecTest extends FunSuite with Matchers{
     checkSymmetric(c1, p1)
     checkSymmetric(c2, p2)
     
-    """PathCodec.Segment.string.append(Path && "sg2")""" should compile
-    """PathCodec.Param.string.append(Path / "sg2")""" shouldNot compile
+    """PathCodec.Param.string / "sg2"""" shouldNot compile
     
-    val c3 = Param("par").string.append(Path && "sg2")
+    val c3 = Param("par").string && "sg2"
     val v3 = "value1"
     val p3 = Path && ("par", "value1") && "sg2"
     
     checkSymmetric(c3, v3)
     checkSymmetric(c3, p3)
     
-    """PathCodec.Fragment.string.append(Path / "sg2")""" shouldNot compile
-    """PathCodec.Fragment.string.append(Path && "sg2")""" shouldNot compile
-    """PathCodec.Fragment.string.append(Path &# "sg2")""" shouldNot compile
+    """PathCodec.Fragment.string / "sg2"""" shouldNot compile
+    """PathCodec.Fragment.string && "sg2"""" shouldNot compile
+    """PathCodec.Fragment.string &# "sg2"""" shouldNot compile
     
   }
   
@@ -182,9 +181,6 @@ class CodecTest extends FunSuite with Matchers{
     
 //    assert( c1.encode("segment") === (Path / "sg2" / "segment"))
 
-    """PathCodec.Segment.string.prepend(Path && "sg2")""" shouldNot compile
-    """PathCodec.Segment.string.prepend(Path &# "sg2")""" shouldNot compile
-    
     val c2 = Param("par").string.prepend(Path / "sg2")
     val v2 = "v1"
     val p2 = Path / "sg2" && ("par", "v1")
@@ -200,21 +196,6 @@ class CodecTest extends FunSuite with Matchers{
     
     checkSymmetric(c3, v3)
     checkSymmetric(c3, p3)
-    
-    """PathCodec.Param("par").string.prepend(Path &# "sg2")""" shouldNot compile
-    
-    val c4 = Fragment.string.prepend(Path / "sg2")
-    val c5 = Fragment.string.prepend(Path && "sg2")
-    val p4 = Path / "sg2" &# "v1"
-    val p5 = Path && "sg2" &# "v1"
-
-    checkSymmetric(c4, v2)
-    checkSymmetric(c5, v2)
-    
-    checkSymmetric(c4, p4)
-    checkSymmetric(c5, p5)
-    
-    """(PathCodec.Fragment.string.prepend(Path &# "sg2")).encode("v1")""" shouldNot compile
     
   }
 

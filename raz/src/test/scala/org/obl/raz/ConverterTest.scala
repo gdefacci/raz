@@ -153,19 +153,15 @@ class ConverterTest extends FunSuite with Matchers {
     checkSymmetric(c1, p1)
     checkSymmetric(c2, p2)
 
-    """PathConverter.Segment.string.append(Path && "sg2")""" should compile
-    """PathConverter.Param.string.append(Path / "sg2")""" shouldNot compile
+    """PathConverter.Segment.string && "sg2"""" should compile
+    """PathConverter.Param.string && "sg2"""" shouldNot compile
 
-    val c3 = Param("par").string.append(Path && "sg2")
+    val c3 = Param("par").string && "sg2"
     val v3 = "value1"
     val p3 = Path && ("par", "value1") && "sg2"
 
     checkSymmetric(c3, v3)
     checkSymmetric(c3, p3)
-
-    """PathConverter.Fragment.string.append(Path / "sg2")""" shouldNot compile
-    """PathConverter.Fragment.string.append(Path && "sg2")""" shouldNot compile
-    """PathConverter.Fragment.string.append(Path &# "sg2")""" shouldNot compile
 
   }
 
@@ -179,9 +175,6 @@ class ConverterTest extends FunSuite with Matchers {
     checkSymmetric(c1, p1)
 
     //    assert( c1.encode("segment") === (Path / "sg2" / "segment"))
-
-    """PathConverter.Segment.string.prepend(Path && "sg2")""" shouldNot compile
-    """PathConverter.Segment.string.prepend(Path &# "sg2")""" shouldNot compile
 
     val c2 = Param("par").string.prepend(Path / "sg2")
     val v2 = "v1"
@@ -199,8 +192,6 @@ class ConverterTest extends FunSuite with Matchers {
     checkSymmetric(c3, v3)
     checkSymmetric(c3, p3)
 
-    """PathConverter.Param("par").string.prepend(Path &# "sg2")""" shouldNot compile
-
     val c4 = Fragment.string.prepend(Path / "sg2")
     val c5 = Fragment.string.prepend(Path && "sg2")
     val p4 = Path / "sg2" &# "v1"
@@ -211,8 +202,6 @@ class ConverterTest extends FunSuite with Matchers {
 
     checkSymmetric(c4, p4)
     checkSymmetric(c5, p5)
-
-    """(PathConverter.Fragment.string.prepend(Path &# "sg2")).encode("v1")""" shouldNot compile
 
   }
 

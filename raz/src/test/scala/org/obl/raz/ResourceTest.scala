@@ -38,9 +38,6 @@ class ResourceTest extends FunSuite {
 
   test("web socket playerid") {
 
-    //val sampleResources = new SampleResources(HTTP, Authority("www.site.com", 80), Path / "app")
-
-    //val wsPlayerById = sampleResources.WebSockets.Players.byId.pathConverter
     val playerIdSegment = PathConverter.Segment.long.map(PlayerId(_)).contramap((id: PlayerId) => id.id)
 
     val wsPlayerByIdPath = WS("www.site.com") / "app" / "ws" / "players" / playerIdSegment
@@ -63,9 +60,6 @@ class ResourceTest extends FunSuite {
 
   test("playerid") {
 
-    //val sampleResources = new SampleResources(HTTP, Authority("www.site.com", 80), Path / "app")
-
-    //val wsPlayerById = sampleResources.WebSockets.Players.byId.pathConverter
     val playerIdSegment = PathConverter.Segment.long.map(PlayerId(_)).contramap((id: PlayerId) => id.id)
 
     val wsPlayerByIdPath = WS("www.site.com") / "app" / "players" / playerIdSegment

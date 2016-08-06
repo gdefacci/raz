@@ -51,15 +51,15 @@ object UriTemplateEncoder {
 
   implicit def apply[H <: HList, TUP, S <: PathPosition, E <: PathPosition](h: H)(implicit tue:ToUriTemplateEncoder[H,TUP,S,E]):UriTemplateEncoder[TUP,S,E] = tue(h)
 
-  implicit final class UriTemplateEncoderPathEncoderWrapper[T, S <: PathPosition, E <: PathPosition](enc: PathEncoder[T, S, E]) extends UriTemplateEncoder[String, S, E] {
-
-    def encodeUriTemplate(t: String): TUriTemplate[S, E] = HUriTemplateEncoder.encoderToUriTemplate(enc, t)
-    
-  }
+//  implicit final class UriTemplateEncoderPathEncoderWrapper[T, S <: PathPosition, E <: PathPosition](enc: PathEncoder[T, S, E]) extends UriTemplateEncoder[String, S, E] {
+//
+//    def encodeUriTemplate(t: String): TUriTemplate[S, E] = HUriTemplateEncoder.encoderToUriTemplate(enc, t)
+//    
+//  }
 
 }
 
-trait ToUriTemplateEncoder[H <: HList, T, S <: PathPosition, E <: PathPosition] {
+trait ToUriTemplateEncoder[H, T, S <: PathPosition, E <: PathPosition] {
 
   def apply(h: H): UriTemplateEncoder[T, S, E]
 
@@ -81,10 +81,10 @@ object ToUriTemplateEncoder {
         }
       }
 
-  implicit def htuple1PathEncoder[T, S <: PathPosition, E <: PathPosition] =
-    new ToUriTemplateEncoder[PathEncoder[T,S,E] :: HNil, String, S, E] {
-        def apply(h: PathEncoder[T,S,E] :: HNil):UriTemplateEncoder[String,S,E] = new UriTemplateEncoder.UriTemplateEncoderPathEncoderWrapper[T,S,E](h.head)
-      }
+//  implicit def htuple1PathEncoder[T, S <: PathPosition, E <: PathPosition] =
+//    new ToUriTemplateEncoder[PathEncoder[T,S,E] :: HNil, String, S, E] {
+//        def apply(h: PathEncoder[T,S,E] :: HNil):UriTemplateEncoder[String,S,E] = new UriTemplateEncoder.UriTemplateEncoderPathEncoderWrapper[T,S,E](h.head)
+//      }
   
   implicit def htuple1PathConverter[TD,TE,UT, S <: PathPosition, E <: PathPosition] =
     new ToUriTemplateEncoder[PathConverter[TD,TE,UT,S,E] :: HNil, UT, S, E] {
@@ -105,45 +105,13 @@ object HUriTemplateEncoder {
 
   def placeholder(k: UriTemplate.Kind, nm: String): UriTemplate = k match {
     case UriTemplate.Segment => UriTemplate / UriTemplate.PlaceHolder(nm)
-    case UriTemplate.Param => UriTemplate && UriTemplate.PlaceHolder(nm)
+    case UriTemplate.Param => UriTemplate.fragment(UriTemplate.PlaceHolder(nm))
     case UriTemplate.ParamWithName(name) => UriTemplate && (name, UriTemplate.PlaceHolder(nm))
     case UriTemplate.Fragment => UriTemplate &# UriTemplate.PlaceHolder(nm)
   }
 
-  def encoderToUriTemplate[T, S <: PathPosition, E <: PathPosition](pe: PathEncoder[T, S, E], name: String): TUriTemplate[S, E] = {
-    pe match {
-      case AroundPathEncoder(prefix, enc, suffix) =>
-        val pl = placeholder(enc.kind, name)
-        new TUriTemplate[S, E](
-            prefix.scheme.orElse(pl.scheme),
-            prefix.authority.orElse(pl.authority),
-          prefix.segments.map(UriTemplate.Segment(_)) ++
-            pl.segments ++
-            suffix.segments.map(UriTemplate.Segment(_)),
-          prefix.params.map(UriTemplate.Param(_)) ++
-            pl.params ++
-            prefix.params.map(UriTemplate.Param(_)),
-          pl.fragment.orElse(suffix.fragment.map(UriTemplate.Fragment(_))))
-
-      case pe: PathEncoder[_, _, _] =>
-        val pl = placeholder(pe.kind, name)
-        new TUriTemplate[S, E](pl.scheme, pl.authority, pl.segments, pl.params, pl.fragment)
-    }
-  }
-
-  implicit def hnilHUriTemplateEncoder[T, S <: PathPosition, E <: PathPosition]: HUriTemplateEncoder[PathEncoder[T, S, E] :: HNil, String :: HNil, S, E] =
-    HUriTemplateEncoder[PathEncoder[T, S, E] :: HNil, String :: HNil, S, E](h => h1 => encoderToUriTemplate(h.head, h1.head))
-
-  implicit def hconsHUriTemplateEncoder[H <: HList, HR <: HList, T, S <: PathPosition, E <: PathPosition, S1 <: PathPosition, E1 <: PathPosition](implicit hr: HUriTemplateEncoder[H, HR, S1, E1], pathAppender: PathAppender[E, S1]): HUriTemplateEncoder[PathEncoder[T, S, E] :: H, String :: HR, S, E1] =
-    HUriTemplateEncoder[PathEncoder[T, S, E] :: H, String :: HR, S, E1] { h =>
-      h1 =>
-        val tp1 = encoderToUriTemplate(h.head, h1.head)
-        val tp2 = hr.apply(h.tail).apply(h1.tail)
-        tp1.append(tp2)
-    }
-
   implicit def hnilConverterHUriTemplateEncoder[TD, T, UT, S <: PathPosition, E <: PathPosition]: HUriTemplateEncoder[PathConverter[TD, T, UT, S, E] :: HNil, UT :: HNil, S, E] =
-    HUriTemplateEncoder[PathConverter[TD, T, UT, S, E] :: HNil, UT :: HNil, S, E](h => h1 => h.uriTemplateEncoder.encodeUriTemplate(h1.head))
+    HUriTemplateEncoder[PathConverter[TD, T, UT, S, E] :: HNil, UT :: HNil, S, E](h => h1 => h.head.uriTemplateEncoder.encodeUriTemplate(h1.head))
 
   implicit def hconsConverterHUriTemplateEncoder[H <: HList, HR <: HList, TD, T, UT, S <: PathPosition, E <: PathPosition, S1 <: PathPosition, E1 <: PathPosition](implicit hr: HUriTemplateEncoder[H, HR, S1, E1], pathAppender: PathAppender[E, S1]): HUriTemplateEncoder[PathConverter[TD, T, UT, S, E] :: H, UT :: HR, S, E1] =
     HUriTemplateEncoder[PathConverter[TD, T, UT, S, E] :: H, UT :: HR, S, E1] { h =>

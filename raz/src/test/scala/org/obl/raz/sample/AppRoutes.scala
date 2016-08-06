@@ -35,6 +35,8 @@ class AppRoutes(sampleResources:SampleResources) {
   lazy val playerRoutes = new PlayerRoutes {
     lazy val Players = sampleResources.Players.pathMatchDecoder
     lazy val PlayerLogin = sampleResources.Players.login.pathMatchDecoder
+    
+    
     lazy val PlayerById = sampleResources.Players.byId.pathCodec
   }
   

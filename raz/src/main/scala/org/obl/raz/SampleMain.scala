@@ -66,21 +66,9 @@ object DecSample extends App {
   val p1 = Path / "field a" / "yeah" / "field a1" && ("minni", "177") && ("minni", "172") && "single-param" && ("param", "value")
   val r = (Segment.string / "yeah" / Segment.string && Param("minni").int && "single-param" && Param("minni").int && ("param", "value")).pathDecoder.map( Cl3.tupled ).decode(p1)
   println(r)
-//  (Segment.string / "yeah" / Segment.string && Param("minni").int && "single-param" && Param("minni").int && ("param", "value")).pathEncoder.contramap( (a:Int) => ??? )
-  
-//  val h = Segment.string :: Segment.string :: Segment.int :: HNil
-////  println( hlistDecoder(h, Path / "aa" / "victoria" / "12") )
-//
-  println( (Segment.string :: Segment.string.append( Path / "victoria") :: Segment.int :: HNil).pathDecoder.decodeFull(Path / "blah" / "aa" / "victoria" / "12"))
-//  
   case class Cl1(name:String, minni:Int, pippo:Int)
   
   (Segment.string / Segment.int && Param("pippo").int).pathDecoder.map(Cl1.tupled)
-//
-//  println(Segment.string /  Segment.int /  Segment.string)
-//  println(Segment.int /& Param("pippo").int)
-//  println(Segment.string /  Segment.int /& Param("pippo").int)
-//  println(Segment.string :: Segment.int :: Param("pippo").int :: HNil)
 }
 
 
@@ -103,22 +91,6 @@ object CodecSample {
   (Segment.string :: Segment.boolean :: HNil).pathCodec
 
   (Segment.string / Segment.boolean / "sg1" && Param("b").int).pathCodec 
-}
-
-
-object EncUriTemplateSample {
-  
-  import PathEncoder.{Segment, Param, Fragment}
-  import UriTemplateEncoder._
-  
-  val d311= UriTemplateEncoder(Segment.string :: Param("minni").int :: HNil).encodeUriTemplate("para", "parb")
-  val d311q = (Segment.string :: Param("minni").int :: HNil).encode("para", 21)
-
-  (Segment.string :: Param("minni").int :: HNil).encodeUriTemplate("para" , "parb")
-  val d322 = (Path / "pippo" / Segment.string / "sg1" / Segment.string / "sg2" && Param("b1").boolean && Param("pluto").int &# "bah").uriTemplateEncoder.encodeUriTemplate("para", "parb", "bool", "int")
-  
-  println(d322)
-  
 }
 
 object PathConverterSample {

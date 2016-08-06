@@ -16,7 +16,7 @@ class PathBuildersTest extends FunSuite with Matchers {
     val pr1 = p1 ++ p1
     val pr2 = p1 ++ p2
     val pr3 = p2 ++ p2
-
+    
     assert(pr1.pathEncoder.encode("v1", "v2", "v3", "v4") === (Path / "v1" / "segment" / "v2" / "v3" / "segment" / "v4"))
     assert(pr2.pathEncoder.encode("v1", "v2", "v3", "v4") === (Path / "v1" / "segment" / "v2" && ("a", "v3") && ("b", "v4")))
     assert(pr3.pathEncoder.encode("v1", "v2", "v3", "v4") === (Path && ("a", "v1") && ("b", "v2") && ("a", "v3") && ("b", "v4")))
@@ -24,12 +24,11 @@ class PathBuildersTest extends FunSuite with Matchers {
     "p1 ++ p2" should compile
     "p2 ++ p1" shouldNot compile
 
-    /*
     val pr4e:PathEncoder[(String,String,String,String), PathPosition.Segment, PathPosition.Segment] = pr1.pathEncoder
-    val pr4:PathEncoder[(String,String,String,String), PathPosition.Segment, PathPosition.Segment]  = (HTTP("mypage.com") / pr4e).pathEncoder
     
-    assert( pr4.pathEncoder.encode("v1", "v2", "v3", "v4") === (Path / "v1" / "segment" / "v2" / "v3" / "segment" / "v4") )
-		*/
+    val pr4:PathEncoder[(String,String,String,String), PathPosition.Absolute, PathPosition.Segment]  = (HTTP("mypage.com") / pr4e).pathEncoder
+    
+    assert( pr4.pathEncoder.encode("v1", "v2", "v3", "v4") === (HTTP("mypage.com") / "v1" / "segment" / "v2" / "v3" / "segment" / "v4") )
   }
 
   test("PathCodecBuilder ++") {

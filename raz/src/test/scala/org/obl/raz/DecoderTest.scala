@@ -44,54 +44,30 @@ class DecoderTest extends FunSuite with Matchers {
 
   test("decode segment append") {
 
-    assert(Segment.string.append(Path / "a").decodeFull(Path / "segment" / "a") == \/-("segment"))
-    assert(Segment.string.append(Path && "a").decodeFull(Path / "segment" && "a") == \/-("segment"))
-    assert(Segment.string.append(Path &# "a").decodeFull(Path / "segment" &# "a") == \/-("segment"))
+    assert((Segment.string / "a").decodeFull(Path / "segment" / "a") == \/-("segment"))
+    assert((Segment.string && "a").decodeFull(Path / "segment" && "a") == \/-("segment"))
+    assert((Segment.string &# "a").decodeFull(Path / "segment" &# "a") == \/-("segment"))
 
   }
 
-  test("decode segment prepend") {
-
-    assert(Segment.string.prepend(Path / "a").decodeFull(Path / "a" / "segment") == \/-("segment"))
-
-    """Segment.string.prepend(Path && "a")""" shouldNot compile
-    """Segment.string.prepend(Path &# "a")""" shouldNot compile
-
-  }
 
   test("decode param append") {
 
     val par = "par"
 
-    """Param(par).string.append(Path / "a")""" shouldNot compile
-    assert(Param(par).string.append(Path && "a").decodeFull(Path && (par, "v1") && "a") == \/-("v1"))
-    assert(Param(par).string.append(Path &# "a").decodeFull(Path && (par, "v1") &# "a") == \/-("v1"))
+    """Param(par).string / "a"""" shouldNot compile
+    assert((Param(par).string && "a").decodeFull(Path && (par, "v1") && "a") == \/-("v1"))
+    assert((Param(par).string &# "a").decodeFull(Path && (par, "v1") &# "a") == \/-("v1"))
 
   }
 
-  test("decode param prepend") {
-
-    val par = "par"
-
-    assert(Param(par).string.prepend(Path / "a").decodeFull(Path / "a" && (par, "v1")) == \/-("v1"))
-    assert(Param(par).string.prepend(Path && "a").decodeFull(Path && (par, "v1") && "a") == \/-("v1"))
-    """Param(par).string.prepend(Path &# "a")""" shouldNot compile
-
-  }
 
   test("decode fragment append") {
-    """Fragment.string.append(Path / "a")""" shouldNot compile
-    """Fragment.string.append(Path && "a")""" shouldNot compile
-    """Fragment.string.append(Path &# "a")""" shouldNot compile
+    """Fragment.string / "a"""" shouldNot compile
+    """Fragment.string && "a"""" shouldNot compile
+    """Fragment.string &# "a"""" shouldNot compile
   }
 
-  test("decode fragment prepend") {
-
-    assert(Fragment.string.prepend(Path / "a").decodeFull(Path / "a" &# "v1") == \/-("v1"))
-    assert(Fragment.string.prepend(Path && "a").decodeFull(Path && "a" &# "v1") == \/-("v1"))
-
-    """Fragment.string.prepend(Path &# "a")""" shouldNot compile
-  }
 
   lazy val sampleDecoder = HTTP("www.site.com", 8020) / "a" / Segment.string / "p" && ("par1", "value1") && Param("par2").int &# Fragment.boolean
   lazy val sampleDecoder1 = Path / "a" / Segment.string / "p" && ("par1", "value1") && Param("par2").int &# Fragment.boolean

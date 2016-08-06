@@ -55,38 +55,43 @@ trait PathDecoder[T, S <: PathPosition, E <: PathPosition] extends PathDecoderMi
     }
   }
 
-  def append[S1 <: PathPosition, E1 <: PathPosition](suffix: TPath[S1, E1])(implicit pathAppender: PathAppender[E, S1]): PathDecoder[T, S, E1] =
-    AroundPathDecoder(Path.empty, this, suffix)
-
-  def prepend[S2 <: PathPosition, E2 <: PathPosition](prefix: TPath[S2, E2])(implicit pathAppender: PathAppender[E2, S]): PathDecoder[T, S2, E] =
-    AroundPathDecoder(prefix, this, Path.empty)
-
-  def decoderAt(path: Path): DecoderType[T] with Api.PartialPathDecoder[T] = PartialPathDecoder(this, path)
+  private[raz] def decoderAt(path: Path): DecoderType[T] with Api.PartialPathDecoder[T] = PartialPathDecoder(this, path)
 }
 
-final case class AroundPathDecoder[T, S0 <: PathPosition, E0 <: PathPosition, S <: PathPosition, E <: PathPosition, S1 <: PathPosition, E1 <: PathPosition](
-    prefix: TPath[S0, E0], decoder: PathDecoder[T, S, E], suffix: TPath[S1, E1]) extends PathDecoder[T, S0, E1] {
+final case class LeftPathDecoder[T, S0 <: PathPosition, E0 <: PathPosition, S <: PathPosition, E <: PathPosition](
+    prefix: TPath[S0, E0], decoder: PathDecoder[T, S, E]) extends PathDecoder[T, S0, E] {
 
   def decode(path: Path): Throwable \/ MatchResult[T] = {
     for {
       p1 <- DecodeUtils.subtract(path, prefix)
       p2 <- decoder.decode(p1)
+    } yield MatchResult(p2.value, p2.rest)
+  }
+
+  override def map[T1](f: T => T1): PathDecoder[T1, S0, E] =
+    new LeftPathDecoder(prefix, decoder.map(f))
+
+}
+
+final case class RightPathDecoder[T, S <: PathPosition, E <: PathPosition, S1 <: PathPosition, E1 <: PathPosition](
+    decoder: PathDecoder[T, S, E], suffix: TPath[S1, E1]) extends PathDecoder[T, S, E1] {
+
+  def decode(path: Path): Throwable \/ MatchResult[T] = {
+    for {
+      p2 <- decoder.decode(path)
       p3 <- DecodeUtils.subtract(p2.rest, suffix)
     } yield MatchResult(p2.value, p3)
   }
 
-  override def map[T1](f: T => T1): PathDecoder[T1, S0, E1] =
-    new AroundPathDecoder(prefix, decoder.map(f), suffix)
-
-  override def append[S2 <: PathPosition, E2 <: PathPosition](suffix: TPath[S2, E2])(implicit pathAppender: PathAppender[E1, S2]): PathDecoder[T, S0, E2] =
-    AroundPathDecoder(prefix, decoder, this.suffix.append(suffix))
-
-  override def prepend[S2 <: PathPosition, E2 <: PathPosition](prefix: TPath[S2, E2])(implicit pathAppender: PathAppender[E2, S0]): PathDecoder[T, S2, E1] =
-    AroundPathDecoder(prefix.append(this.prefix), this, Path.empty)
+  override def map[T1](f: T => T1): PathDecoder[T1, S, E1] =
+    new RightPathDecoder(decoder.map(f), suffix)
 
 }
 
+
 object PathDecoder {
+  
+  implicit def toPathOps[T, S <: PathPosition, E <: PathPosition](p:PathDecoder[T,S,E]) = new PathOps(p)
 
   private[raz] def isEmpty(p: Path) = p.segments.isEmpty && p.params.isEmpty && p.fragment.isEmpty
 
@@ -95,9 +100,6 @@ object PathDecoder {
       def decode(p: Path): Throwable \/ MatchResult[T] =
         \/.fromTryCatchNonFatal(f(p)).flatMap(i => i)
     }
-
-  implicit def fromPathDecoderBuilder[T, S <: PathPosition, E <: PathPosition](pe: PathDecoder[T, S, E]): PathDecoderBuilder[PathDecoder[T, S, E] :: HNil, HNil, S, T, S, E] =
-    PathDecoderBuilder[PathDecoder[T, S, E] :: HNil, HNil, S, T, S, E](pe :: HNil, HNil, pe)
 
   def opt[T, S <: PathPosition, E <: PathPosition](dec: PathDecoder[T, S, E]): PathDecoder[Option[T], S, E] = {
     PathDecoder[Option[T], S, E] { pth: Path =>
@@ -244,31 +246,4 @@ final case class PartialPathDecoder[T, S <: PathPosition, E <: PathPosition](ful
 
   def decode(p: Path) = fullPath.decode(prefix.merge(p))
 
-}
-
-trait ToPathDecoder[H <: HList, T, S <: PathPosition, E <: PathPosition] {
-  def apply(h: H): PathDecoder[T, S, E]
-}
-
-object ToPathDecoder {
-
-  implicit def htuple[H <: HList, HR <: HList, TUP, S <: PathPosition, E <: PathPosition](
-      implicit hr: HPathDecoder[H, HR, S, E], 
-      tupler: Tupler.Aux[HR, TUP], 
-      gen: Generic.Aux[TUP, HR]) =
-        
-    new ToPathDecoder[H, TUP, S, E] {
-      def apply(h: H) = PathDecoder { (pth: Path) =>
-        hr.apply(h).apply(pth).map { mr =>
-          MatchResult(tupler.apply(mr.value), mr.rest)
-        }
-      }
-    }
-
-  implicit def htuple1[T, S <: PathPosition, E <: PathPosition] =
-    new ToPathDecoder[PathDecoder[T,S,E] :: HNil, T, S, E] {
-      def apply(h: PathDecoder[T,S,E] :: HNil): PathDecoder[T, S, E] = {
-        h.head
-      }
-    }
 }
