@@ -51,12 +51,6 @@ object UriTemplateEncoder {
 
   implicit def apply[H <: HList, TUP, S <: PathPosition, E <: PathPosition](h: H)(implicit tue:ToUriTemplateEncoder[H,TUP,S,E]):UriTemplateEncoder[TUP,S,E] = tue(h)
 
-//  implicit final class UriTemplateEncoderPathEncoderWrapper[T, S <: PathPosition, E <: PathPosition](enc: PathEncoder[T, S, E]) extends UriTemplateEncoder[String, S, E] {
-//
-//    def encodeUriTemplate(t: String): TUriTemplate[S, E] = HUriTemplateEncoder.encoderToUriTemplate(enc, t)
-//    
-//  }
-
 }
 
 trait ToUriTemplateEncoder[H, T, S <: PathPosition, E <: PathPosition] {
@@ -86,10 +80,10 @@ object ToUriTemplateEncoder {
 //        def apply(h: PathEncoder[T,S,E] :: HNil):UriTemplateEncoder[String,S,E] = new UriTemplateEncoder.UriTemplateEncoderPathEncoderWrapper[T,S,E](h.head)
 //      }
   
-  implicit def htuple1PathConverter[TD,TE,UT, S <: PathPosition, E <: PathPosition] =
-    new ToUriTemplateEncoder[PathConverter[TD,TE,UT,S,E] :: HNil, UT, S, E] {
-        def apply(h: PathConverter[TD,TE,UT,S,E] :: HNil):UriTemplateEncoder[UT,S,E] = h.head.uriTemplateEncoder
-      }
+//  implicit def htuple1PathConverter[TD,TE,UT, S <: PathPosition, E <: PathPosition] =
+//    new ToUriTemplateEncoder[PathConverter[TD,TE,UT,S,E] :: HNil, UT, S, E] {
+//        def apply(h: PathConverter[TD,TE,UT,S,E] :: HNil):UriTemplateEncoder[UT,S,E] = h.head.uriTemplateEncoder
+//      }
 
 }
 
@@ -103,12 +97,12 @@ object HUriTemplateEncoder {
       def apply(h: H): HR => TUriTemplate[S, E] = f(h)
     }
 
-  def placeholder(k: UriTemplate.Kind, nm: String): UriTemplate = k match {
-    case UriTemplate.Segment => UriTemplate / UriTemplate.PlaceHolder(nm)
-    case UriTemplate.Param => UriTemplate.fragment(UriTemplate.PlaceHolder(nm))
-    case UriTemplate.ParamWithName(name) => UriTemplate && (name, UriTemplate.PlaceHolder(nm))
-    case UriTemplate.Fragment => UriTemplate &# UriTemplate.PlaceHolder(nm)
-  }
+//  def placeholder(k: UriTemplate.Kind, nm: String): UriTemplate = k match {
+//    case UriTemplate.Segment => UriTemplate / UriTemplate.PlaceHolder(nm)
+//    case UriTemplate.Param => UriTemplate.fragment(UriTemplate.PlaceHolder(nm))
+//    case UriTemplate.ParamWithName(name) => UriTemplate && (name, UriTemplate.PlaceHolder(nm))
+//    case UriTemplate.Fragment => UriTemplate &# UriTemplate.PlaceHolder(nm)
+//  }
 
   implicit def hnilConverterHUriTemplateEncoder[TD, T, UT, S <: PathPosition, E <: PathPosition]: HUriTemplateEncoder[PathConverter[TD, T, UT, S, E] :: HNil, UT :: HNil, S, E] =
     HUriTemplateEncoder[PathConverter[TD, T, UT, S, E] :: HNil, UT :: HNil, S, E](h => h1 => h.head.uriTemplateEncoder.encodeUriTemplate(h1.head))

@@ -22,16 +22,19 @@ object ToPathDecoder {
       }
     }
 
-  implicit def htuple1[T, S <: PathPosition, E <: PathPosition] =
-    new ToPathDecoder[PathDecoder[T,S,E] :: HNil, T, S, E] {
-      def apply(h: PathDecoder[T,S,E] :: HNil): PathDecoder[T, S, E] = {
-        h.head
-      }
-    }
-  
   implicit def fromPathConverter[TD,TE,TU, S <: PathPosition, E <: PathPosition] =
     new ToPathDecoder[PathConverter[TD,TE,TU,S,E], TD, S, E] {
       def apply(h: PathConverter[TD,TE,TU,S,E]): PathDecoder[TD, S, E] = h.decoder
+    }
+  
+  implicit def fromPathCodec[TD,TE,S <: PathPosition, E <: PathPosition] =
+    new ToPathDecoder[PathCodec[TD,TE,S,E], TD, S, E] {
+      def apply(h: PathCodec[TD,TE,S,E]): PathDecoder[TD, S, E] = h.decoder
+    }
+  
+  implicit def pathDecoderIdentity[TD,S <: PathPosition, E <: PathPosition] =
+    new ToPathDecoder[PathDecoder[TD,S,E], TD, S, E] {
+      def apply(h: PathDecoder[TD,S,E]): PathDecoder[TD, S, E] = h
     }
     
 }

@@ -11,9 +11,6 @@ object EndsWith {
   
   import shapeless._
   
-//  implicit def hcons1[H <: HList, T, E <: PathPosition](implicit endsWith:EndsWith[T,E]) =
-//    EndsWith[T :: H, E]
-
   implicit def hcons1[T, E <: PathPosition](implicit endsWith:EndsWith[T,E]) =
     EndsWith[T :: HNil, E]
   

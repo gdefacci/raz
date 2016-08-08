@@ -14,8 +14,6 @@ sealed case class Path(scheme: Option[Scheme], authority: Option[Authority], seg
 
 object Path extends TPath[PathPosition.Segment, PathPosition.Segment](None, None, Nil, Nil, None) { 
 
-  type SegmentsPath = TPath[PathPosition.Segment, PathPosition.Segment]
-  
   def isEmpty(p: Path) = p.authority.isEmpty && p.segments.isEmpty && p.params.isEmpty && p.fragment.isEmpty
 
   def empty[P <: PathPosition] = new TPath[P, P](None, None, Nil, Nil, None)

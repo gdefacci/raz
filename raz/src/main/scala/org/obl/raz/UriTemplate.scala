@@ -26,7 +26,6 @@ object UriTemplate extends TUriTemplate[PathPosition.Segment, PathPosition.Segme
   def fragment(frag:String):TUriTemplate[PathPosition.Fragment,PathPosition.Fragment] = 
     new TUriTemplate[PathPosition.Fragment,PathPosition.Fragment](fragment=Some(Fragment(frag)))  
       
-        
   def segment(sg: PlaceHolder) =
     new TUriTemplate[PathPosition.Segment, PathPosition.Segment](None, None, Segment(sg) :: Nil, Nil, None)
 
@@ -38,7 +37,7 @@ object UriTemplate extends TUriTemplate[PathPosition.Segment, PathPosition.Segme
     
   def fragment(frag: PlaceHolder) =
     new TUriTemplate[PathPosition.Fragment, PathPosition.Fragment](None, None, Nil, Nil, Some(UriTemplate.Fragment(frag)))
-//
+  
   sealed class PlaceHolderOr[T](val value: Either[PlaceHolder, T])
 
   final case class PlaceHolder(name: String)
@@ -49,37 +48,22 @@ object UriTemplate extends TUriTemplate[PathPosition.Segment, PathPosition.Segme
   final case class Param(v: Either[PlaceHolder, (ParamName, ParamValue)]) extends PlaceHolderOr[(ParamName, ParamValue)](v)
   final case class Fragment(v: Either[PlaceHolder, String]) extends PlaceHolderOr[String](v)
 
-  sealed trait Kind
   
-  sealed trait PartFactory[T, R] {
-    def apply: Either[PlaceHolder, T] => R
+  sealed class PartFactory[T, R](val apply: Either[PlaceHolder, T] => R) {
     def apply(t: PlaceHolder): R = apply(Left(t))
     def apply(t: T): R = apply(Right(t))
   }
-
-  object Segment extends PartFactory[String, Segment] with Kind {
-    val apply = new Segment(_)
-  }
-
-  object ParamName extends PartFactory[String, ParamName] {
-    val apply = new ParamName(_)
-  }
-
-  object ParamValue extends PartFactory[Option[String], ParamValue] {
-    val apply = new ParamValue(_)
-  }
-
-  object Param extends PartFactory[(ParamName, ParamValue), Param] with Kind {
-    val apply = new Param(_)
+  
+  object Segment extends PartFactory[String, Segment](new Segment(_))
+  object ParamName extends PartFactory[String, ParamName](new ParamName(_))
+  object ParamValue extends PartFactory[Option[String], ParamValue](new ParamValue(_))
+  object Param extends PartFactory[(ParamName, ParamValue), Param](new Param(_)) {
     
     def apply(p:(String, Option[String])):Param = Param(ParamName(p._1) -> ParamValue(p._2))
   }
 
-  object Fragment extends PartFactory[String, Fragment] with Kind {
-    val apply = new Fragment(_)
-  }
-  
-  final case class ParamWithName(name:String) extends Kind
+  object Fragment extends PartFactory[String, Fragment](new Fragment(_))
+  final case class ParamWithName(name:String)
 
 }
 

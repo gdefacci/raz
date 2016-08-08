@@ -3,8 +3,6 @@ enablePlugins(CrossPerProjectPlugin)
 organization in ThisBuild := "org.obl"
 version in ThisBuild := "0.9.0-SNAPSHOT"
 
-scalaVersion := scala_2_11
-
 lazy val allScalaVersion = Seq(scala_2_11, scala_2_10)
 
 lazy val raz = Project(
@@ -14,7 +12,6 @@ lazy val raz = Project(
     crossScalaVersions := allScalaVersion,
     libraryDependencies += scalazCore,
     libraryDependencies += shapeless,
-    //libraryDependencies += scalacheck % "test",
     libraryDependencies += scalatest % "test"
   )
 )

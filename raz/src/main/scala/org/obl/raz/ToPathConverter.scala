@@ -23,11 +23,4 @@ object ToPathConverter {
       def apply(h: PathConverter[TD, TE, TU, S, E]): PathConverter[TD, TE, TU, S, E] = h
     }
 
-  
-//  implicit def htuple1[TD, TE, TU, S <: PathPosition, E <: PathPosition] =
-//    new ToPathConverter[PathConverter[TD, TE, TU, S, E] :: HNil, TD, TE, TU, S, E] {
-//      def apply(h: PathConverter[TD, TE, TU, S, E] :: HNil): PathConverter[TD, TE, TU, S, E] = {
-//        h.head
-//      }
-//    }
 }

@@ -5,7 +5,7 @@ import scala.language.implicitConversions
 
 class WebSocketResource[S <: PathPosition](
     val base: TPath[S, PathPosition.Segment],
-    val appPath: Path.SegmentsPath,
+    val appPath: TPath[PathPosition.Segment, PathPosition.Segment],
     val segments: TPath[PathPosition.Segment, PathPosition.Segment]) {
 
   protected lazy val self = base append appPath append segments

@@ -6,8 +6,6 @@ object RazBuild extends Build {
   val scala_2_10 = "2.10.6"
   val scala_2_11 = "2.11.8"
 
-  val buildScalaVersion = "2.11.8"
-
   val scalazVersion = "7.2.4"
   val http4sVersion = "0.14.1a"
   val shapelessVersion = "2.3.1"

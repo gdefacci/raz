@@ -23,11 +23,11 @@ sealed trait PathEncoder[T, S <: PathPosition, E <: PathPosition] extends PathEn
   type EncoderType[T1] = PathEncoder[T1, S, E]
   protected def createEncoder[T1](f: T1 => TPath[S, E]) = PathEncoder(f)
 
-//  def append[S2 <: PathPosition, E2 <: PathPosition](suffix: TPath[S2, E2])(implicit prefixPathAppender: PathAppender[S, S], suffixPathAppender: PathAppender[E, S2]): PathEncoder[T, S, E2] =
-//    AroundPathEncoder(Path.empty[S], this, suffix)
-//
-//  def prepend[S2 <: PathPosition, E2 <: PathPosition](prefix: TPath[S2, E2])(implicit prefixPathAppender: PathAppender[E2, S], suffixPathAppender: PathAppender[E, E]): PathEncoder[T, S2, E] =
-//    AroundPathEncoder(prefix, this, Path.empty[E])
+  def append[S2 <: PathPosition, E2 <: PathPosition](suffix: TPath[S2, E2])(implicit suffixPathAppender: PathAppender[E, S2]): PathEncoder[T, S, E2] =
+    RightPathEncoder(this, suffix)
+
+  def prepend[S2 <: PathPosition, E2 <: PathPosition](prefix: TPath[S2, E2])(implicit prefixPathAppender: PathAppender[E2, S]): PathEncoder[T, S2, E] =
+    LeftPathEncoder(prefix, this)
 
 }
 
@@ -61,16 +61,8 @@ object PathEncoder {
     def encode(t: T): TPath[S, E] = f(t)
   }
 
-//  implicit def toPathEncoderBuilder[T, S <: PathPosition, E <: PathPosition](pe: PathEncoder[T, S, E]): PathEncoderBuilder[PathEncoder[T, S, E] :: HNil, HNil, S, T, S, E] =
-//    PathEncoderBuilder[PathEncoder[T, S, E] :: HNil, HNil, S, T, S, E](pe :: HNil, HNil, pe)
-
-  
   implicit def toPathOps[T, S <: PathPosition, E <: PathPosition](p:PathEncoder[T,S,E]) = new PathOps(p)
   
-  implicit def hTupleEncoder[H <: HList, TUP, S <: PathPosition, E <: PathPosition](h: H)(implicit tpe:ToPathEncoder[H,TUP,S,E]) = {
-    tpe(h)
-  }  
-    
   object Segment {
 
     private def create[T](f: T => String) = PathEncoder[T, PathPosition.Segment, PathPosition.Segment](t => Path.segments(f(t)) )

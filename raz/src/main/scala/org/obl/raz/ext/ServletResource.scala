@@ -5,7 +5,7 @@ import scala.language.implicitConversions
 
 class ServletResource[S <: PathPosition](
     val base: TPath[S, PathPosition.Segment],
-    val servletPath: Path.SegmentsPath,
+    val servletPath: TPath[PathPosition.Segment, PathPosition.Segment],
     val segments: TPath[PathPosition.Segment, PathPosition.Segment] = Path.empty) {
 
   protected lazy val self = base append servletPath append segments

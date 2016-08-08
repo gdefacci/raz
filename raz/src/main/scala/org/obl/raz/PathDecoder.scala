@@ -56,6 +56,13 @@ trait PathDecoder[T, S <: PathPosition, E <: PathPosition] extends PathDecoderMi
   }
 
   private[raz] def decoderAt(path: Path): DecoderType[T] with Api.PartialPathDecoder[T] = PartialPathDecoder(this, path)
+  
+  def append[S2 <: PathPosition, E2 <: PathPosition](suffix: TPath[S2, E2])(implicit suffixPathAppender: PathAppender[E, S2]): PathDecoder[T, S, E2] =
+    RightPathDecoder(this, suffix)
+
+  def prepend[S2 <: PathPosition, E2 <: PathPosition](prefix: TPath[S2, E2])(implicit prefixPathAppender: PathAppender[E2, S]): PathDecoder[T, S2, E] =
+    LeftPathDecoder(prefix, this)
+
 }
 
 final case class LeftPathDecoder[T, S0 <: PathPosition, E0 <: PathPosition, S <: PathPosition, E <: PathPosition](
