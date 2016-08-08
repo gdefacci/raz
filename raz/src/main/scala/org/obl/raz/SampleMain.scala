@@ -36,9 +36,9 @@ object EncSample  {
   HTTP("www.google.com") / Segment.string
   
   val inst = Cl1("a string", 2, 1)
-  val pth1:TPath[PathPosition.Segment, PathPosition.Param] = (Segment.string :: Param("pippo").int :: Param("pippo").int :: HNil).contramap( (c:Cl1) => Cl1.unapply(c).get).encode(inst)
+  val pth1:TPath[PathPosition.Segment, PathPosition.Param] = (Segment.string :: Param("pippo").int :: Param("pippo").int :: HNil).pathEncoder.contramap( (c:Cl1) => Cl1.unapply(c).get).pathEncoder.encode(inst)
   
-  println( (Segment.string :: Param("minni").int :: Param("pippo").int :: HNil).contramap( (c:Cl1) => Cl1.unapply(c).get).encode(inst) )
+  println( (Segment.string :: Param("minni").int :: Param("pippo").int :: HNil).pathEncoder.contramap( (c:Cl1) => Cl1.unapply(c).get).encode(inst) )
   
   (Segment.string / "yeah" / Segment.string && Param("minni").int && "single-param" && Param("minni").int && ("param", "value") &# Fragment.string).pathEncoder.contramap( (a:Int) => ??? )
   

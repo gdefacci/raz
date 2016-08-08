@@ -75,9 +75,9 @@ class EncoderTest extends FunSuite with Matchers {
     val cn4a = HTTP("home.com") / cn1 / Segment.boolean 
     val cn4b = HTTP("home.com") / cn1
     
-    val enc4a = cn4a.contramap(Cl1.unapply(_:Cl1).get)
-    val enc4b = cn4b.contramap(Cl2.unapply(_:Cl2).get)
-    val enc4 = cn4.contramap(Cl2.unapply(_:Cl2).get)
+    val enc4a = cn4a.pathEncoder.contramap(Cl1.unapply(_:Cl1).get)
+    val enc4b = cn4b.pathEncoder.contramap(Cl2.unapply(_:Cl2).get)
+    val enc4 = cn4.pathEncoder.contramap(Cl2.unapply(_:Cl2).get)
     
     assert(enc4.encode(Cl2("1" -> 2)) === (Path / "1" / "2"))
     assert(enc4a.encode(Cl1("1" -> 2, true)) === (HTTP("home.com") / "1" / "2" / "true"))
