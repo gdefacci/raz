@@ -4,9 +4,10 @@ Raz
 Raz is a type safe scala DSL to create and match urls.
 The following example illustrates few features:
 
+```scala
     object Sample extends App {
 
-      import org.obl.raz._
+      import com.github.gdefacci.raz._
       import PathConverter.{ Segment, Param, Fragment }
 
       val state = Path / "countries" / Segment.string / "states" / Segment.string
@@ -46,6 +47,7 @@ The following example illustrates few features:
 
       assert(fullAdrs1.pathConverter.decodeFull(pathAdrs).toOption == Some(Address("it", "ts", 8, "via roma", "12")))
     }
+```
       
 For more samples check
 
