@@ -1,15 +1,17 @@
 import sbt._
 import Keys._
 
-object RazBuild extends Build {
+object Dependencies {
 
   val scala_2_10 = "2.10.6"
   val scala_2_11 = "2.11.8"
+  val scala_2_12 = "2.12.1"
+  
+  val scalazVersion = "7.2.8"
+  val http4sVersion ="0.15.0"
 
-  val scalazVersion = "7.2.4"
-  val http4sVersion = "0.14.1a"
-  val shapelessVersion = "2.3.1"
-  val scalatestVersion = "2.2.6"
+  val shapelessVersion = "2.3.2"
+  val scalatestVersion = "3.0.1"
   val scalacheckVersion = "1.13.2"
 
   val scalazCore = "org.scalaz" %% "scalaz-core" % scalazVersion
